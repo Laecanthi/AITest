@@ -47,9 +47,28 @@ class NeuralNetwork
     }
 }
 
-    function UpdateNeuralNetwork(network, agent)
+function UpdateNeuralNetwork(network, agent)
 {   
-    //ResetLayers(network);
+    const inputs = network.inputs;
+    const cn1 = network.cn1;
+    const cn2 = network.cn2;
+    const cn3 = network.cn3;
+    const hl1 = network.hl1;
+    const hl2 = network.hl2;
+    const bs1 = network.bs1;
+    const bs2 = network.bs2;
+    const bs3 = network.bs3;
+    const mb1 = network.mb1;
+    const mb2 = network.mb2;
+    const outputs = network.outputs;
+
+    const inputsLen = inputs.length;
+    const hl1Len = hl1.length;
+    const hl2Len = hl2.length;
+    const outputsLen = outputs.length;
+    const mb1Len = mb1.length;
+    const mb2Len = mb2.length;
+    const totalOutputs = outputsLen + mb1Len + mb2Len;
 
     let dx = targets[agent.targetID].X - agent.xPos;
     let dy = targets[agent.targetID].Y - agent.yPos;
@@ -60,113 +79,111 @@ class NeuralNetwork
 
     /**************************************** INPUTS ********************************/
 
-    network.inputs[0] = (targets[agent.targetID].X - agent.xPos) / 100;
-    network.inputs[1] = (targets[agent.targetID].Y - agent.yPos) / 100;
-    network.inputs[2] = Math.sin(agent.angle);
-    network.inputs[3] = Math.cos(agent.angle);
-    network.inputs[4] = (dist - targetRadius) / targetRadius;
-    network.inputs[5] = (agent.xVel) / 25;
-    network.inputs[6] = (agent.yVel) / 25;
-    network.inputs[7] = (agent.aVel) * 5;
-    network.inputs[8] = agent.fuel / 500;
-    network.inputs[9] = (agent.yPos + 60) / 100;
-    network.inputs[10] = (agent.xPos) / 100;
-    network.inputs[11] = agent.xLastExternalForce / 10;
-    network.inputs[12] = agent.yLastExternalForce / 10;
+    inputs[0] = (targets[agent.targetID].X - agent.xPos) / 100;
+    inputs[1] = (targets[agent.targetID].Y - agent.yPos) / 100;
+    inputs[2] = Math.sin(agent.angle);
+    inputs[3] = Math.cos(agent.angle);
+    inputs[4] = (dist - targetRadius) / targetRadius;
+    inputs[5] = (agent.xVel) / 25;
+    inputs[6] = (agent.yVel) / 25;
+    inputs[7] = (agent.aVel) * 5;
+    inputs[8] = agent.fuel / 500;
+    inputs[9] = (agent.yPos + 60) / 100;
+    inputs[10] = (agent.xPos) / 100;
+    inputs[11] = agent.xLastExternalForce / 10;
+    inputs[12] = agent.yLastExternalForce / 10;
 
     if(agent.targetID + 1 < targets.length)
     {
-        network.inputs[13] = (targets[agent.targetID + 1].X - agent.xPos) / 100;
-        network.inputs[14] = (targets[agent.targetID + 1].Y - agent.yPos) / 100;
+        inputs[13] = (targets[agent.targetID + 1].X - agent.xPos) / 100;
+        inputs[14] = (targets[agent.targetID + 1].Y - agent.yPos) / 100;
     }else{
-        network.inputs[13] = (nextMovingTargetX - agent.xPos) / 100;
-        network.inputs[14] = (nextMovingTargetY - agent.yPos) / 100;
+        inputs[13] = (nextMovingTargetX - agent.xPos) / 100;
+        inputs[14] = (nextMovingTargetY - agent.yPos) / 100;
     }
 
     // end of inputs
 
     //update hl1
 
-    for (var hl1Node = 0; hl1Node < network.hl1.length; hl1Node++)
+    for (var hl1Node = 0; hl1Node < hl1Len; hl1Node++)
     {
-        let sum = network.bs1[hl1Node];
+        let sum = bs1[hl1Node];
 
-        for (var inputNode = 0; inputNode < network.inputs.length; inputNode++) // inputs
+        for (var inputNode = 0; inputNode < inputsLen; inputNode++) // inputs
         {
-            var connection = (inputNode * network.hl1.length) + hl1Node;
-            sum += network.inputs[inputNode] * network.cn1[connection];
+            var connection = (inputNode * hl1Len) + hl1Node;
+            sum += inputs[inputNode] * cn1[connection];
         }
 
-        for (var mb1Node = 0; mb1Node < network.mb1.length; mb1Node++) // mb1
+        for (var mb1Node = 0; mb1Node < mb1Len; mb1Node++) // mb1
         {
-            var connection = ((mb1Node + network.inputs.length) * network.hl1.length) + hl1Node;
-            sum += network.mb1[mb1Node] * network.cn1[connection];
+            var connection = ((mb1Node + inputsLen) * hl1Len) + hl1Node;
+            sum += mb1[mb1Node] * cn1[connection];
         }
 
-        for (var mb2Node = 0; mb2Node < network.mb2.length; mb2Node++) // mb2
+        for (var mb2Node = 0; mb2Node < mb2Len; mb2Node++) // mb2
         {
-            var connection = ((mb2Node + network.mb1.length + network.inputs.length) * network.hl1.length) + hl1Node;
-            sum += network.mb2[mb2Node] * network.cn1[connection];
+            var connection = ((mb2Node + mb1Len + inputsLen) * hl1Len) + hl1Node;
+            sum += mb2[mb2Node] * cn1[connection];
         }
 
-        network.hl1[hl1Node] = SoftClamp(sum);
+        hl1[hl1Node] = SoftClamp(sum);
     }
 
     //update hl2
 
-    for (var hl2Node = 0; hl2Node < network.hl2.length; hl2Node++)
+    for (var hl2Node = 0; hl2Node < hl2Len; hl2Node++)
     {
-        let sum = network.bs2[hl2Node];
+        let sum = bs2[hl2Node];
 
-        for (var hl1Node = 0; hl1Node < network.hl1.length; hl1Node++)
+        for (var hl1Node = 0; hl1Node < hl1Len; hl1Node++)
         {
-            var connection = (hl1Node * network.hl2.length) + hl2Node;
-            sum += network.hl1[hl1Node] * network.cn2[connection];
+            var connection = (hl1Node * hl2Len) + hl2Node;
+            sum += hl1[hl1Node] * cn2[connection];
         }
 
-        network.hl2[hl2Node] = SoftClamp(sum);
+        hl2[hl2Node] = SoftClamp(sum);
     }
 
     //update outputs
 
-    var totalOutputs = network.outputs.length + network.mb1.length + network.mb2.length;
-
-    for (var outputNode = 0; outputNode < network.outputs.length; outputNode++)
+    for (var outputNode = 0; outputNode < outputsLen; outputNode++)
     {
-        let sum = network.bs3[outputNode];
+        let sum = bs3[outputNode];
 
-        for (var hl2Node = 0; hl2Node < network.hl2.length; hl2Node++)
+        for (var hl2Node = 0; hl2Node < hl2Len; hl2Node++)
         {
             var connection = (hl2Node * totalOutputs) + outputNode;
-            sum += network.hl2[hl2Node] * network.cn3[connection];
+            sum += hl2[hl2Node] * cn3[connection];
         }
 
-        network.outputs[outputNode] = SoftClamp(sum);
+        outputs[outputNode] = SoftClamp(sum);
     }
 
     // update mb1: overwrite buffer
-    for (var mb1Node = 0; mb1Node < network.mb1.length; mb1Node++)
+    for (var mb1Node = 0; mb1Node < mb1Len; mb1Node++)
     {
-        let sum = network.bs3[mb1Node + network.outputs.length];
+        let sum = network.bs3[mb1Node + outputsLen];
 
-        for (var hl2Node = 0; hl2Node < network.hl2.length; hl2Node++)
+        for (var hl2Node = 0; hl2Node < hl2Len; hl2Node++)
         {
-            var connection = (hl2Node * totalOutputs) + mb1Node + network.outputs.length;
-            sum += network.hl2[hl2Node] * network.cn3[connection];
+            var connection = (hl2Node * totalOutputs) + mb1Node + outputsLen;
+            sum += hl2[hl2Node] * cn3[connection];
         }
 
-        network.mb1[mb1Node] = SoftClamp(sum);
+        mb1[mb1Node] = SoftClamp(sum);
     }
 
     // update mb2: persistent buffer
-    for (var mb2Node = 0; mb2Node < network.mb2.length; mb2Node++)
+    for (var mb2Node = 0; mb2Node < mb2Len; mb2Node++)
     {
-        let sum = network.bs3[mb2Node + network.outputs.length + network.mb1.length];
+        let sum = bs3[mb2Node + outputsLen + mb1Len];
 
-        for (var hl2Node = 0; hl2Node < network.hl2.length; hl2Node++)
+        for (var hl2Node = 0; hl2Node < hl2Len; hl2Node++)
         {
-            var connection = (hl2Node * totalOutputs) + mb2Node + network.outputs.length + network.mb1.length;
-            sum += network.hl2[hl2Node] * network.cn3[connection];
+            var connection = (hl2Node * totalOutputs) + mb2Node + outputsLen + mb1Len;
+            sum += hl2[hl2Node] * cn3[connection];
         }
 
         if(!isFinite(sum))
@@ -177,14 +194,12 @@ class NeuralNetwork
 
         const bufferPersistence = 0.05;
 
-        network.mb2[mb2Node] =
+        mb2[mb2Node] =
             SoftClamp(
-                network.mb2[mb2Node] * (1 - bufferPersistence) +
+                mb2[mb2Node] * (1 - bufferPersistence) +
                 sum * bufferPersistence
             );
     }
-
-    
 }
 
     function CloneNetwork(network)
