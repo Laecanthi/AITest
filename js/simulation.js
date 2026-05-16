@@ -3,7 +3,7 @@ function Iterate(dt, step = false)
     let steps = simSpeed * simSubsteps;
     if(step)
     {
-        steps = 2;
+        steps = 1;
     }
 
     for(var iteration = 0; iteration < steps; iteration++)

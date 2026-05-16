@@ -92,7 +92,7 @@ pauseButton.addEventListener('click', function() {
 stepButton.addEventListener('click', function() {
     const ctx = m_ctx;
 
-    Iterate(0, true);
+    Iterate(1/60/simSubsteps, true);
 
     render();
 
