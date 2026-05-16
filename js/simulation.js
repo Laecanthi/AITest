@@ -1,6 +1,12 @@
-function Iterate(dt)
+function Iterate(dt, step = false)
 {
-    for(var iteration = 0; iteration < simSpeed * simSubsteps; iteration++)
+    let steps = simSpeed * simSubsteps;
+    if(step)
+    {
+        steps = 2;
+    }
+
+    for(var iteration = 0; iteration < steps; iteration++)
     {
         time += dt;
 

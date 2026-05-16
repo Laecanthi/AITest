@@ -70,6 +70,9 @@ const pauseButton =
 const stepButton =
     document.getElementById("stepButton");
 
+const quickStepButton =
+    document.getElementById("quickStepButton");
+
 const resetButton =
     document.getElementById("resetButton");
 
@@ -87,7 +90,39 @@ pauseButton.addEventListener('click', function() {
 });
 
 stepButton.addEventListener('click', function() {
-    RenderedLoop(1/60/simSubsteps);
+    const ctx = m_ctx;
+
+    Iterate(0, true);
+
+    render();
+
+    RenderNetwork(neuralNetworks[0], true);
+
+    ctx.font = "30px Arial";
+    ctx.fillStyle = "black";
+
+    ctx.fillText(generation + ": " + time.toFixed(2), 10, 30);
+});
+
+quickStepButton.addEventListener('click', function() {
+    const ctx = m_ctx;
+
+    const cacheSimspeed = simSpeed;
+
+    simSpeed = 1;
+
+    Iterate(1/60/simSubsteps);
+
+    simSpeed = cacheSimspeed;
+
+    render();
+
+    RenderNetwork(neuralNetworks[0], true);
+
+    ctx.font = "30px Arial";
+    ctx.fillStyle = "black";
+
+    ctx.fillText(generation + ": " + time.toFixed(2), 10, 30);
 });
 
 resetButton.addEventListener('click', function() {
@@ -152,7 +187,18 @@ function SystemLoop(timestamp) { /******************************************* SY
     {
         unrenderedLoopActive = false; // signal the other loop to stop
 
-        RenderedLoop(deltaTime);
+        const ctx = m_ctx;
+
+        Iterate(deltaTime);
+
+        render();
+
+        RenderNetwork(neuralNetworks[0], true);
+
+        ctx.font = "30px Arial";
+        ctx.fillStyle = "black";
+
+        ctx.fillText(generation + ": " + time.toFixed(2), 10, 30);
 
         //generationText.textContent = "";
 
@@ -170,22 +216,6 @@ function SystemLoop(timestamp) { /******************************************* SY
         }
         // don't re-request an animation frame
     }
-}
-
-function RenderedLoop(deltaTime)
-{
-    const ctx = m_ctx;
-
-    Iterate(deltaTime);
-
-    render();
-
-    RenderNetwork(neuralNetworks[0], true);
-
-    ctx.font = "30px Arial";
-    ctx.fillStyle = "black";
-
-    ctx.fillText(generation + ": " + time.toFixed(2), 10, 30);
 }
 
 function UnrenderedLoop()
