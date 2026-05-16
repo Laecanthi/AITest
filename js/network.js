@@ -164,7 +164,7 @@ function UpdateNeuralNetwork(network, agent)
     // update mb1: overwrite buffer
     for (var mb1Node = 0; mb1Node < mb1Len; mb1Node++)
     {
-        let sum = network.bs3[mb1Node + outputsLen];
+        let sum = bs3[mb1Node + outputsLen];
 
         for (var hl2Node = 0; hl2Node < hl2Len; hl2Node++)
         {
