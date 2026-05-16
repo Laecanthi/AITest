@@ -75,6 +75,7 @@ var windForceY = 0;
 var curriculumStage = 0;
 var retryCount = 0;
 var retrySign = 0;
+var retryFlipCount = 0;
 var lastVerifiedGeneration = 0;
 
 var inputLabels =

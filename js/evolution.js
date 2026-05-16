@@ -39,7 +39,7 @@ function MutateNextGen() /**************************************** NEXT GENERATI
     {
         deltaScore *= 100;
 
-        if(retrySign == Math.sign(deltaScore))
+        if(retrySign == Math.sign(deltaScore) && retryFlipCount < 2)
         {
             if(retryCount < 2)
             {
@@ -53,9 +53,10 @@ function MutateNextGen() /**************************************** NEXT GENERATI
             }
         }else{
             console.log("Sign flipped, reset attempt count")
-            retrySign = Math.sign(deltaScore)
+            retrySign = Math.sign(deltaScore);
             retryCount = 0;
             generation--;
+            retryFlipCount++;
             return;
         }
     }else{
@@ -64,7 +65,9 @@ function MutateNextGen() /**************************************** NEXT GENERATI
             console.log("High delta score was ignored");
         }
     }
+    retrySign = Math.sign(deltaScore)
     retryCount = 0;
+    retryFlipCount = 0;
     lastVerifiedGeneration = generation;
 
     bestScore.push(best);
