@@ -1,0 +1,25 @@
+body {
+    background-color: gray;
+}
+#main-canvas {
+    width: 800px;
+    height: 600px;
+    background-color: dimgray;
+}
+#network-canvas {
+    width: 800px;
+    height: 600px;
+    background-color: dimgray;
+}
+#graph-canvas {
+    width: 800px;
+    height: 200px;
+    background-color: lightgrey;
+}
+#generation {
+    position: fixed;
+    top: 5px;
+    left: 5px;
+    background-color: rgba(255,255,255,0.5);
+
+}
