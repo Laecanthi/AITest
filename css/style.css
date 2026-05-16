@@ -16,10 +16,32 @@ body {
     height: 200px;
     background-color: lightgrey;
 }
-#generation {
-    position: fixed;
-    top: 5px;
-    left: 5px;
-    background-color: rgba(255,255,255,0.5);
-
+#controls {
+    display: flex;
+    width: 800px;
+    background-color: lightgrey;
+}
+#controls button {
+    margin-bottom: 5px;
+}
+.column {
+    width: 400px;
+    background-color: white;
+}
+#flex-body {
+    width: 90vw;
+    display: flex;
+    flex-wrap: wrap;
+}
+#flex-body canvas, #flex-body div {
+    margin: 5px;
+    padding: 5px;
+}
+#confirmResetButton {
+    color: white;
+    background-color: red;
+    border-color: white;
+}
+.hide {
+    display: none;
 }

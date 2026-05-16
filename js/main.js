@@ -1,16 +1,10 @@
-// SLIDERS
+// SLIDERS AND CHECKBOXES
 
 const speedSlider =
     document.getElementById("speedSlider");
 
 const substepSlider =
     document.getElementById("substepSlider");
-
-const mutationSlider =
-    document.getElementById("mutationSlider");
-
-const generationSlider =
-    document.getElementById("generationSlider");
 
 const showOnlyLeaderCheckbox =
     document.getElementById("showOnlyLeaderCheckbox");
@@ -23,7 +17,7 @@ const renderSimulationCheckbox =
 
 speedSlider.oninput = function()
 {
-    simSpeed = Number(this.value);
+    simSpeed = Number(this.value) / 10;
 
     document.getElementById(
         "speedLabel"
@@ -37,28 +31,6 @@ substepSlider.oninput = function()
     document.getElementById(
         "substepLabel"
     ).textContent = simSubsteps;
-};
-
-const mutationLabel = document.getElementById(
-        "mutationLabel"
-    );
-
-mutationSlider.oninput = function()
-{
-    mutationRate = this.value / 100;
-
-    mutationLabel.textContent = mutationRate.toFixed(2);
-};
-
-const generationLabel = document.getElementById(
-        "generationLabel"
-    );
-
-generationSlider.oninput = function()
-{
-    generationLength = Number(this.value);
-
-    generationLabel.textContent = generationLength;
 };
 
 showOnlyLeaderCheckbox.oninput = function()
@@ -85,32 +57,90 @@ renderSimulationCheckbox.oninput = function()
     }
 }
 
-// END OF SLIDERS
+// END OF SLIDERS AND CHECKBOXES
 
-for(var i = 0; i < amountOfAgents; i++) /********************************************** CREATE AGENTS ***********************************/
+// BUTTONS
+
+const playButton =
+    document.getElementById("playButton");
+
+const pauseButton =
+    document.getElementById("pauseButton");
+
+const stepButton =
+    document.getElementById("stepButton");
+
+const resetButton =
+    document.getElementById("resetButton");
+
+const confirmResetButton =
+    document.getElementById("confirmResetButton");
+
+playButton.addEventListener('click', function() {
+    simPlay = true;
+    // Start the loop
+    requestAnimationFrame(SystemLoop);
+});
+
+pauseButton.addEventListener('click', function() {
+    simPlay = false;
+});
+
+stepButton.addEventListener('click', function() {
+    RenderedLoop(1/60/simSubsteps);
+});
+
+resetButton.addEventListener('click', function() {
+    confirmResetButton.classList.remove("hide");
+
+    setTimeout(() => {
+        confirmResetButton.classList.add("hide");
+    }, 3000);
+});
+
+confirmResetButton.addEventListener('click', function() {
+    agents.length = 0;
+    neuralNetworks.length = 0;
+    scores.length = 0;
+    generation = 0;
+    bestScore.length = 0;
+    averageScore.length = 0;
+    medianScore.length = 0;
+    worstScore.length = 0;
+    BuildAgents();
+    SetNextGen(true);
+    confirmResetButton.classList.add("hide");
+});
+
+function BuildAgents() /********************************************** CREATE AGENTS ***********************************/
 {
-    agents.push(new Agent(randomPosX, randomPosY, 50, 500, 0.1, 2000, 80));
+    for(var i = 0; i < amountOfAgents; i++) 
+    {
+        agents.push(new Agent(randomPosX, randomPosY, 50, 500, 0.1, 2000, 80));
 
-    var newNetwork = new NeuralNetwork(15, 24, 24, 2, 4, 4);
+        var newNetwork = new NeuralNetwork(15, 24, 24, 2, 4, 4);
 
-    for (var node = 0; node < newNetwork.cn1.length; node++) {newNetwork.cn1[node] = Math.random() * 2 - 1;}
-    for (var node = 0; node < newNetwork.cn2.length; node++) {newNetwork.cn2[node] = Math.random() * 2 - 1;}
-    for (var node = 0; node < newNetwork.cn3.length; node++) {newNetwork.cn3[node] = Math.random() * 2 - 1;}
+        for (var node = 0; node < newNetwork.cn1.length; node++) {newNetwork.cn1[node] = Math.random() * 2 - 1;}
+        for (var node = 0; node < newNetwork.cn2.length; node++) {newNetwork.cn2[node] = Math.random() * 2 - 1;}
+        for (var node = 0; node < newNetwork.cn3.length; node++) {newNetwork.cn3[node] = Math.random() * 2 - 1;}
 
-    for (var node = 0; node < newNetwork.bs1.length; node++) {newNetwork.bs1[node] = Math.random() * 2 - 1;}
-    for (var node = 0; node < newNetwork.bs2.length; node++) {newNetwork.bs2[node] = Math.random() * 2 - 1;}
-    for (var node = 0; node < newNetwork.bs3.length; node++) {newNetwork.bs3[node] = Math.random() * 2 - 1;}
+        for (var node = 0; node < newNetwork.bs1.length; node++) {newNetwork.bs1[node] = Math.random() * 2 - 1;}
+        for (var node = 0; node < newNetwork.bs2.length; node++) {newNetwork.bs2[node] = Math.random() * 2 - 1;}
+        for (var node = 0; node < newNetwork.bs3.length; node++) {newNetwork.bs3[node] = Math.random() * 2 - 1;}
 
-    ResetLayers(newNetwork);
+        ResetLayers(newNetwork);
 
-    //console.log(newNetwork);
+        //console.log(newNetwork);
 
-    neuralNetworks.push(newNetwork);
+        neuralNetworks.push(newNetwork);
 
-    scores.push(0);
-    
-    
+        scores.push(0);
+        
+        
+    }
 }
+
+
 
 function SystemLoop(timestamp) { /******************************************* SYSTEM LOOP ***********************************************/
     const ctx = m_ctx;
@@ -122,28 +152,40 @@ function SystemLoop(timestamp) { /******************************************* SY
     {
         unrenderedLoopActive = false; // signal the other loop to stop
 
-        Iterate(deltaTime);
-
-        render();
-
-        RenderNetwork(neuralNetworks[0], true);
-
-        ctx.font = "30px Arial";
-        ctx.fillStyle = "black";
-
-        ctx.fillText(generation + ": " + time.toFixed(2), 10, 30);
+        RenderedLoop(deltaTime);
 
         //generationText.textContent = "";
 
         // Request the next frame to keep the loop running
-        requestAnimationFrame(SystemLoop);
+
+        if(simPlay)
+        {
+            requestAnimationFrame(SystemLoop);
+        }
+      
     }else{
         if(!unrenderedLoopActive) {
             unrenderedLoopActive = true;
-            UnrenderedLoop();
+            UnrenderedLoop(); // this is getting a rehaul so ignoring pausing in this for now
         }
         // don't re-request an animation frame
     }
+}
+
+function RenderedLoop(deltaTime)
+{
+    const ctx = m_ctx;
+
+    Iterate(deltaTime);
+
+    render();
+
+    RenderNetwork(neuralNetworks[0], true);
+
+    ctx.font = "30px Arial";
+    ctx.fillStyle = "black";
+
+    ctx.fillText(generation + ": " + time.toFixed(2), 10, 30);
 }
 
 function UnrenderedLoop()
@@ -177,7 +219,5 @@ const testWorker = new Worker('js/simulationWorker.js');
 testWorker.postMessage({ value: 42 });
 testWorker.onmessage = (e) => console.log("got back:", e.data);
 
+BuildAgents();
 SetNextGen(true);
-
-// Start the loop
-requestAnimationFrame(SystemLoop);

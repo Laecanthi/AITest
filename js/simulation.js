@@ -70,10 +70,6 @@ function SetNextGen(initialize = false)
     targetRadius = CurriculumBlend([8,4,1.5]);
     maxThrustDuration = CurriculumBlend([15,15,15,11]);
     thrustBurn = CurriculumBlend([0, 500 / maxThrustDuration]);
-    generationLabel.textContent = generationLength;
-    generationSlider.value = generationLength;
-    mutationLabel.textContent = mutationRate.toFixed(2);
-    mutationSlider.value = mutationRate * 100;
 
     windDirection = Math.random() * Math.PI * 2;
     globalWindMagnitude = Math.random() * CurriculumBlend([0,0,0.25,5]);

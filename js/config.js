@@ -53,6 +53,7 @@ var renderSimulation = true;
 
     let lastTime = 0;
 
+var simPlay = false;
 var simSpeed = 5;
 var simSubsteps = 5;
 
