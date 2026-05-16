@@ -39,7 +39,7 @@ function MutateNextGen() /**************************************** NEXT GENERATI
     {
         deltaScore *= 100;
 
-        if(retrySign == Math.sign(deltaScore) && retryFlipCount < 2)
+        if(retrySign == Math.sign(deltaScore) || retryFlipCount >= 2)
         {
             if(retryCount < 2)
             {
