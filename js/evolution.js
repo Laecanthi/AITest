@@ -52,11 +52,11 @@ function MutateNextGen() /**************************************** NEXT GENERATI
                 console.log("High delta score has been confirmed:" + deltaScore.toFixed(2) + "%");
             }
         }else{
-            console.log("Sign flipped, reset attempt count")
+            retryFlipCount++;
+            console.log("Sign flipped, reset attempt count: x" + retryFlipCount)
             retrySign = Math.sign(deltaScore);
             retryCount = 0;
             generation--;
-            retryFlipCount++;
             return;
         }
     }else{
