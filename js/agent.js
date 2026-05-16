@@ -58,7 +58,7 @@ class Agent /**************************** AGENT **************************/
     }
 }
 
-    function UpdateAgent(agent, dt)
+function UpdateAgent(agent, dt)
 {
     //agent.xThrust = clamp(agent.xThrust, -1, 1);
     //agent.yThrust = clamp(agent.yThrust, -1, 1);

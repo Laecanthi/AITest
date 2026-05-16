@@ -82,7 +82,12 @@ const confirmResetButton =
 playButton.addEventListener('click', function() {
     simPlay = true;
     // Start the loop
-    requestAnimationFrame(SystemLoop);
+    if(renderSimulation) {
+        requestAnimationFrame(SystemLoop);
+    } else {
+        unrenderedLoopActive = true;
+        startNextGeneration();
+    }
 });
 
 pauseButton.addEventListener('click', function() {
@@ -220,34 +225,121 @@ function SystemLoop(timestamp) { /******************************************* SY
 
 function UnrenderedLoop()
 {
-    const ctx = m_ctx;
-
-    if(!unrenderedLoopActive) return; // stop if rendered mode was re-enabled
-    const deltaTime = 1/60/simSubsteps;
-    const budget = 50; // ms per tick, leave some breathing room for the browser
-    const start = performance.now();
-
-    while(performance.now() - start < budget) {
-        Iterate(deltaTime);
-    }
-
-    RenderNetwork(neuralNetworks[0], false);
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    ctx.font = "30px Arial";
-    ctx.fillStyle = "black";
-
-    ctx.fillText(generation + ": " + (time / generationLength * 100).toFixed(2) + "%", 10, 30);
-
-    //generationText.textContent = generation;
-
-    setTimeout(UnrenderedLoop, 0);
+    if(!unrenderedLoopActive) return;
+    // just start the first generation, workers take it from here
+    startNextGeneration();
 }
-
-const testWorker = new Worker('js/simulationWorker.js');
-testWorker.postMessage({ value: 42 });
-testWorker.onmessage = (e) => console.log("got back:", e.data);
 
 BuildAgents();
 SetNextGen(true);
+
+// WORKERS
+
+const NUM_WORKERS = 4;
+const workers = [];
+let workersFinished = 0;
+let workerScores = new Array(amountOfAgents).fill(0);
+
+for(let i = 0; i < NUM_WORKERS; i++)
+{
+    const worker = new Worker('js/simulationWorker.js');
+    
+    worker.onmessage = function(event)
+    {
+        const { scores: workerResult, workerIndex } = event.data;
+        const sliceStart = workerIndex * (amountOfAgents / NUM_WORKERS);
+        for(let j = 0; j < workerResult.length; j++) {
+            workerScores[sliceStart + j] = workerResult[j];
+        }
+
+        workersFinished++;
+
+        //console.log("Worker", workerIndex, "finished generation, time taken:", performance.now());
+
+        if(workersFinished === NUM_WORKERS)
+        {
+            workersFinished = 0;
+            for(let j = 0; j < amountOfAgents; j++) {
+                scores[j] = workerScores[j];
+            }
+            
+            //console.log(scores[0], scores[1], scores[2]);
+            SetNextGen();
+            // update curriculum etc
+            RenderNetwork(neuralNetworks[0], false);
+
+            m_ctx.clearRect(0,0,canvas.width,canvas.height);
+
+            m_ctx.font = "30px Arial";
+            m_ctx.fillStyle = "black";
+
+            m_ctx.fillText(generation, 10, 30);
+            startNextGeneration();
+        }
+
+        
+    };
+
+    worker.onerror = function(e) {
+        console.error("Worker error:", e.message, e.filename, e.lineno);
+    };
+
+    workers.push(worker);
+}
+
+function startNextGeneration()
+{
+    if(!unrenderedLoopActive || !simPlay) return; // respects pause
+
+    const agentsPerWorker = amountOfAgents / NUM_WORKERS;
+
+    for(let w = 0; w < NUM_WORKERS; w++)
+    {
+        const sliceStart = w * agentsPerWorker;
+
+        const networkSlice = neuralNetworks.slice(sliceStart, sliceStart + agentsPerWorker).map(n => ({
+            cn1: new Float32Array(n.cn1),
+            cn2: new Float32Array(n.cn2),
+            cn3: new Float32Array(n.cn3),
+            bs1: new Float32Array(n.bs1),
+            bs2: new Float32Array(n.bs2),
+            bs3: new Float32Array(n.bs3),
+            mb1: new Float32Array(n.mb1),
+            mb2: new Float32Array(n.mb2),
+        }));
+
+        const agentSlice = agents.slice(sliceStart, sliceStart + agentsPerWorker).map(a => ({
+            xPos: a.xPos, yPos: a.yPos,
+            xVel: a.xVel, yVel: a.yVel,
+            aVel: a.aVel, angle: a.angle,
+            thrust: a.thrust, rotation: a.rotation,
+            fuel: a.fuel, mass: a.mass,
+            dryMass: a.dryMass, fuelMass: a.fuelMass,
+            fThrust: a.fThrust, torque: a.torque,
+            targetID: a.targetID, timeInTarget: a.timeInTarget,
+            lastDist: a.lastDist, alive: a.alive,
+            xLastExternalForce: a.xLastExternalForce,
+            yLastExternalForce: a.yLastExternalForce
+        }));
+
+        workers[w].postMessage({
+            networks: networkSlice,
+            agents: agentSlice,
+            workerIndex: w,
+            targets: JSON.parse(JSON.stringify(targets)), // deep copy
+            windForceX, windForceY,
+            generationLength,
+            dt: 1/60/simSubsteps,
+            targetRadius, thrustBurn, crashVelocity,
+            curriculumStage,
+            currentMovingTargetX, currentMovingTargetY,
+            nextMovingTargetX, nextMovingTargetY,
+            networkShape: {
+                inputLen: neuralNetworks[0].inputs.length,
+                hl1Len: neuralNetworks[0].hl1.length,
+                hl2Len: neuralNetworks[0].hl2.length,
+                outputLen: neuralNetworks[0].outputs.length,
+            }
+        });
+    }
+}

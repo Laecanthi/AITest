@@ -202,7 +202,7 @@ function UpdateNeuralNetwork(network, agent)
     }
 }
 
-    function CloneNetwork(network)
+function CloneNetwork(network)
 {
     //console.log(network);
     let newNetwork = new NeuralNetwork(
@@ -227,7 +227,7 @@ function UpdateNeuralNetwork(network, agent)
     return newNetwork;
 }
 
-    function ResetLayers(network)
+function ResetLayers(network)
 {
     for (var node = 0; node < network.inputs.length; node++) {network.inputs[node] = 0;}
     for (var node = 0; node < network.hl1.length; node++) {network.hl1[node] = 0;}
