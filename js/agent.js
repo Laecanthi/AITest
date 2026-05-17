@@ -83,7 +83,7 @@ function UpdateAgent(agent, dt)
     var xExternalForce = 0;
     var yExternalForce = 0;
 
-    const localWindMagnitude = Math.sin(agent.yPos / 10) + Math.cos(agent.xPos / 10);
+    const localWindMagnitude = Math.sin(time);
 
     xExternalForce += windForceX * localWindMagnitude;
     yExternalForce += windForceY * localWindMagnitude;

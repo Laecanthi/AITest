@@ -41,15 +41,15 @@ function MutateNextGen() /**************************************** NEXT GENERATI
 
         if(retrySign == Math.sign(deltaScore) || retryFlipCount >= 2)
         {
-            if(retryCount < 2)
+            if(retryCount < 3)
             {
                 console.log("Generation retried for high delta score: " + deltaScore.toFixed(2) + "%");
-                console.log("Attempt: " + retryCount);
+                console.info("Attempt: " + retryCount);
                 retryCount++;
                 generation--;
                 return;
             }else{
-                console.log("High delta score has been confirmed:" + deltaScore.toFixed(2) + "%");
+                console.warn("High delta score has been confirmed:" + deltaScore.toFixed(2) + "%");
             }
         }else{
             retryFlipCount++;
@@ -79,7 +79,7 @@ function MutateNextGen() /**************************************** NEXT GENERATI
 
     const eliteCount = Math.floor(
         amountOfAgents *
-        CurriculumBlend([0.02, 0.05, 0.12])
+        CurriculumBlend([0.02, 0.05, 0.12, 0.20])
     );
 
     let nextGeneration = [];
@@ -95,31 +95,57 @@ function MutateNextGen() /**************************************** NEXT GENERATI
 
     const survivorCount = Math.floor(amountOfAgents * 0.4);
 
-    var survivors = population.slice(0, survivorCount);
+    const hardCutoff = CurriculumBlend([500, 500, 0, -200, -1000], curriculumStage);
+    const softCutoff = population[Math.floor(survivorCount * 0.25)].score; // top 25th percentile score
 
-    survivors = survivors.filter(agent => agent.score <= 500);
+    // use whichever is more permissive
+    const activeCutoff = Math.max(hardCutoff, softCutoff);
 
-    if(survivors.length === 0)
-    {
-        survivors = population.slice(0, survivorCount);
+    survivors = population
+        .slice(0, survivorCount)
+        .filter(a => a.score <= activeCutoff);
+
+    
+    const targetHitters = population.filter(a => a.score <= -500);
+    if(targetHitters.length >= 10 && Math.floor(curriculumStage) >= 3) {
+        survivors = targetHitters;
     }
+
+    console.log("Hard cutoff:", hardCutoff.toFixed(0), 
+                "Soft cutoff:", softCutoff.toFixed(0),
+                "Target Hitters:", targetHitters.length,
+                "Survivors:", survivors.length);
+
 
     while (nextGeneration.length < amountOfAgents)
     {
-        let parentA = TournamentSelect(survivors);
-        let parentB = TournamentSelect(survivors);
+        if(Math.random() < 0.3) {
+            // clone + mutate single parent
+            let parent = TournamentSelect(survivors);
+            var percentile = population.indexOf(parent);
+            let child = NudgeNetwork(CloneNetwork(parent.network), percentile);
 
-        var percentile = population.indexOf(parentA) + population.indexOf(parentB);
-        percentile /= 2 * amountOfAgents;
+            child.i = nextGeneration.length;
+            child.id = child.id + child.i;
 
-        let child = Crossover(parentA.network, parentB.network);
+            nextGeneration.push(child);
+        } else {
+            // normal crossover
+            let parentA = TournamentSelect(survivors);
+            let parentB = TournamentSelect(survivors);
 
-        child = NudgeNetwork(child, percentile);
+            var percentile = population.indexOf(parentA) + population.indexOf(parentB);
+            percentile /= 2 * amountOfAgents;
 
-        child.i = nextGeneration.length;
-        child.id = child.id + child.i;
+            let child = Crossover(parentA.network, parentB.network);
 
-        nextGeneration.push(child);
+            child = NudgeNetwork(child, percentile);
+
+            child.i = nextGeneration.length;
+            child.id = child.id + child.i;
+
+            nextGeneration.push(child);
+        }
     }
 
     neuralNetworks = nextGeneration;

@@ -158,7 +158,7 @@ function BuildAgents() /********************************************** CREATE AG
     {
         agents.push(new Agent(randomPosX, randomPosY, 50, 500, 0.1, 2000, 80));
 
-        var newNetwork = new NeuralNetwork(15, 24, 24, 2, 4, 4);
+        var newNetwork = new NeuralNetwork(15, 16, 16, 2, 2, 2);
 
         for (var node = 0; node < newNetwork.cn1.length; node++) {newNetwork.cn1[node] = Math.random() * 2 - 1;}
         for (var node = 0; node < newNetwork.cn2.length; node++) {newNetwork.cn2[node] = Math.random() * 2 - 1;}
@@ -203,7 +203,12 @@ function SystemLoop(timestamp) { /******************************************* SY
         ctx.font = "30px Arial";
         ctx.fillStyle = "black";
 
-        ctx.fillText(generation + ": " + time.toFixed(2), 10, 30);
+        if(retryCount > 0 || retryFlipCount > 0)
+        {
+            ctx.fillText(generation + " x" + retryCount + "-" + retryFlipCount + ": " + time.toFixed(2), 10, 30);
+        }else{
+            ctx.fillText(generation + ": " + time.toFixed(2), 10, 30);
+        }
 
         //generationText.textContent = "";
 
@@ -273,7 +278,14 @@ for(let i = 0; i < NUM_WORKERS; i++)
             m_ctx.font = "30px Arial";
             m_ctx.fillStyle = "black";
 
-            m_ctx.fillText(generation, 10, 30);
+            if(retryCount > 0 || retryFlipCount > 0)
+            {
+                m_ctx.fillText(generation + " x" + retryCount + "-" + retryFlipCount, 10, 30);
+            }else{
+                m_ctx.fillText(generation, 10, 30);
+            }
+
+            
             startNextGeneration();
         }
 

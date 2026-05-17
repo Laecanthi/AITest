@@ -74,7 +74,7 @@ function SetNextGen(initialize = false)
     mutationRate = CurriculumBlend([0.08,0.03,0.01]);
     mutationChance = CurriculumBlend([0.03,0.02,0.01]);
     targetRadius = CurriculumBlend([8,4,1.5]);
-    maxThrustDuration = CurriculumBlend([15,15,15,11]);
+    maxThrustDuration = CurriculumBlend([100,30,15,11]);
     thrustBurn = CurriculumBlend([0, 500 / maxThrustDuration]);
 
     windDirection = Math.random() * Math.PI * 2;

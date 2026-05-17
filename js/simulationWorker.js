@@ -169,7 +169,7 @@ function UpdateNeuralNetwork(network, agent, targets, nextMovingTargetX, nextMov
 }
 
 
-function UpdateAgent(agent, dt, thrustBurn, windForceX, windForceY, crashVelocity)
+function UpdateAgent(agent, dt, thrustBurn, windForceX, windForceY, crashVelocity, time)
 {
     //agent.xThrust = clamp(agent.xThrust, -1, 1);
     //agent.yThrust = clamp(agent.yThrust, -1, 1);
@@ -194,7 +194,7 @@ function UpdateAgent(agent, dt, thrustBurn, windForceX, windForceY, crashVelocit
     var xExternalForce = 0;
     var yExternalForce = 0;
 
-    const localWindMagnitude = Math.sin(agent.yPos / 10) + Math.cos(agent.xPos / 10);
+    const localWindMagnitude = Math.sin(time);
 
     xExternalForce += windForceX * localWindMagnitude;
     yExternalForce += windForceY * localWindMagnitude;
@@ -306,7 +306,7 @@ onmessage = function(event) {
                     0.15
                 );
 
-            UpdateAgent(agents[i], dt, thrustBurn, windForceX, windForceY, crashVelocity);
+            UpdateAgent(agents[i], dt, thrustBurn, windForceX, windForceY, crashVelocity, time);
 
                    /***************************** REWARDS ***************************/
 
@@ -337,6 +337,7 @@ onmessage = function(event) {
         var success = 0;
         var safety = 0;
         var commitment = 0;
+        var conservation = 0;
         var stagnation = 0;
 
         // PROGRESS
@@ -349,7 +350,7 @@ onmessage = function(event) {
         else
         {
             // moving away heavily punishes agent
-            progress += Math.abs(deltaDist) * 250;
+            progress += Math.abs(deltaDist) * CurriculumBlend([250,250,500,800], curriculumStage);
         }
         //progress += dist / 1000;
         progress *= dt;
@@ -360,16 +361,16 @@ onmessage = function(event) {
         {
             agents[i].timeInTarget += dt;
 
-            success = -10; // -10
-            success -= agents[i].timeInTarget * 20; // at most -10
-            success *= dt; // at most 20/s
+            success = -50; // -50
+            success -= agents[i].timeInTarget * 100; // at most -50
+            success *= dt; // at most 100/s
 
-            // 15 reward per target max
+            // 11-ish reward per target max
 
             if(agents[i].timeInTarget >= 0.5)
             {
-                success -= 500;
-                success -= 500 * ((generationLength - time) / generationLength);
+                success -= 1000;
+                success -= 10000 * ((generationLength - time) / generationLength);
 
                 if(agents[i].targetID < targets.length - 1)
                 {
@@ -400,35 +401,47 @@ onmessage = function(event) {
             
         }
 
-        // COMMITMENT
+        // COMMITMENT - UNUSED
 
         commitment = deltaRotation*deltaRotation; // at most 4
         commitment += deltaThrust*deltaThrust; // at most 1
         //commitment += deltaSpeed*deltaSpeed;
         commitment *= dt; // at most 5/s
 
+        // CONSERVATION
+
+        conservation -= agents[i].fuel / 500 * 20; // at most 20
+        conservation *= dt;
+        if(agents[i].fuel <= 0)
+        {
+            agents[i].alive = false;
+            conservation += 5; // penalty for running out of fuel
+            conservation += 500 * ((generationLength - time) / generationLength); // also proportional to time left in generation, which is a lot more important
+        }
+
         // STAGNATION
 
         if(dist > targetRadius)
         {
-            if(speed < 10)
+            if(speed < 1)
             {
-                stagnation += 10 - speed; // at most 10
+                stagnation += 1 - speed; // at most 1
             }
 
             stagnation *= dist / 10;
-        }
 
-        stagnation += dist / 100;
+            stagnation += dist;
+        }
 
         stagnation *= dt;
 
 
-        progress *= CurriculumBlend([0,1,1,0.5], curriculumStage);
-        success *= CurriculumBlend([0,1,1,1], curriculumStage);
+        progress *= CurriculumBlend([0,1,1,1], curriculumStage);
+        success *= CurriculumBlend([0,1,1,2], curriculumStage);
         safety *= CurriculumBlend([1,0.5,1,0.25], curriculumStage);
-        commitment *= CurriculumBlend([1,0.5,0.1,0], curriculumStage);
-        stagnation *= CurriculumBlend([0,0,0,1], curriculumStage);
+        commitment *= CurriculumBlend([1,0.5,0.1,0], curriculumStage); // this is unused
+        conservation *= CurriculumBlend([0,0.5,1,1], curriculumStage);
+        stagnation *= CurriculumBlend([0,0,0.1,1], curriculumStage);
 
         if(
             !isFinite(dist) ||
@@ -441,9 +454,9 @@ onmessage = function(event) {
             continue;
         }
 
-        scores[i] += progress + success + safety + commitment + stagnation;
+        scores[i] += progress + success + safety + conservation + stagnation;
 
-        scores[i] = clamp(scores[i], -500000, 500000);
+        scores[i] = clamp(scores[i], -1000000, 1000000);
 
         }
     }
