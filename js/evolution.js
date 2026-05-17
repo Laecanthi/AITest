@@ -1,6 +1,12 @@
 function MutateNextGen() /**************************************** NEXT GENERATION *********************************/
 {
 
+    if(generation <= 0) {
+    generation = 0;
+    retryCount = 0;
+    retryFlipCount = 0;
+    }
+
     population = neuralNetworks.map((network, index) => {
     return { network: network, score: scores[index] };
     });
@@ -95,7 +101,7 @@ function MutateNextGen() /**************************************** NEXT GENERATI
 
     const survivorCount = Math.floor(amountOfAgents * 0.4);
 
-    const hardCutoff = CurriculumBlend([500, 500, 0, -200, -1000], curriculumStage);
+    const hardCutoff = CurriculumBlend([500, 0, -200, -100, -8000], curriculumStage);
     const softCutoff = population[Math.floor(survivorCount * 0.25)].score; // top 25th percentile score
 
     // use whichever is more permissive
@@ -105,15 +111,9 @@ function MutateNextGen() /**************************************** NEXT GENERATI
         .slice(0, survivorCount)
         .filter(a => a.score <= activeCutoff);
 
-    
-    const targetHitters = population.filter(a => a.score <= -500);
-    if(targetHitters.length >= 10 && Math.floor(curriculumStage) >= 3) {
-        survivors = targetHitters;
-    }
-
-    console.log("Hard cutoff:", hardCutoff.toFixed(0), 
-                "Soft cutoff:", softCutoff.toFixed(0),
-                "Target Hitters:", targetHitters.length,
+    console.log("Hard cutoff:", hardCutoff.toFixed(1), 
+                "Soft cutoff:", softCutoff.toFixed(1),
+                "Active:", activeCutoff.toFixed(1),
                 "Survivors:", survivors.length);
 
 

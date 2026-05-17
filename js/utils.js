@@ -1,4 +1,4 @@
-function SoftClamp(value)
+/*function SoftClamp(value)
 {
     return Math.tanh(value);
 }
@@ -21,7 +21,10 @@ function ArrayBlend(array, value)
 function CurriculumBlend(array)
 {
     return ArrayBlend(array, curriculumStage);
-}
+}*/
+
+const degreesToRadians = (degrees) => (degrees * Math.PI) / 180;
+
 
 function RollingAverage(array, windowSize)
 {

@@ -158,7 +158,7 @@ function BuildAgents() /********************************************** CREATE AG
     {
         agents.push(new Agent(randomPosX, randomPosY, 50, 500, 0.1, 2000, 80));
 
-        var newNetwork = new NeuralNetwork(15, 16, 16, 2, 2, 2);
+        var newNetwork = new NeuralNetwork(12, 16, 16, 2, 4, 4);
 
         for (var node = 0; node < newNetwork.cn1.length; node++) {newNetwork.cn1[node] = Math.random() * 2 - 1;}
         for (var node = 0; node < newNetwork.cn2.length; node++) {newNetwork.cn2[node] = Math.random() * 2 - 1;}
@@ -328,7 +328,6 @@ function startNextGeneration()
             fuel: a.fuel, mass: a.mass,
             dryMass: a.dryMass, fuelMass: a.fuelMass,
             fThrust: a.fThrust, torque: a.torque,
-            targetID: a.targetID, timeInTarget: a.timeInTarget,
             lastDist: a.lastDist, alive: a.alive,
             xLastExternalForce: a.xLastExternalForce,
             yLastExternalForce: a.yLastExternalForce
@@ -338,14 +337,12 @@ function startNextGeneration()
             networks: networkSlice,
             agents: agentSlice,
             workerIndex: w,
-            targets: JSON.parse(JSON.stringify(targets)), // deep copy
+            targetX, groundY, targetRadius,
             windForceX, windForceY,
             generationLength,
             dt: 1/60/simSubsteps,
-            targetRadius, thrustBurn, crashVelocity,
+            thrustBurn, crashVelocity,
             curriculumStage,
-            currentMovingTargetX, currentMovingTargetY,
-            nextMovingTargetX, nextMovingTargetY,
             networkShape: {
                 inputLen: neuralNetworks[0].inputs.length,
                 hl1Len: neuralNetworks[0].hl1.length,

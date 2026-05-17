@@ -35,20 +35,22 @@ for(var i = 1; i < 10; i++)
 
 DrawAgent(agents[0], "Red");
 
-for(var i = 0; i < targets.length; i++)
+/*for(var i = 0; i < targets.length; i++)
 {
     DrawTarget(targets[i].X, targets[i].Y, i);
-}
+}*/
+
+DrawTarget(targetX, groundY, "Landing pad");
 
 ctx.strokeStyle = "Blue";
 ctx.beginPath();
-ctx.moveTo(75 * pixelsPerMeter, 5 * pixelsPerMeter);
-ctx.lineTo((75 + (windForceX + Math.cos(windDirection))) * pixelsPerMeter, (5 - (windForceY + Math.sin(windDirection))) * pixelsPerMeter);
+ctx.moveTo(155 * pixelsPerMeter, 5 * pixelsPerMeter);
+ctx.lineTo((155 + (windForceX + Math.cos(windDirection))) * pixelsPerMeter, (5 - (windForceY + Math.sin(windDirection))) * pixelsPerMeter);
 ctx.stroke();
 
 ctx.fillStyle = "Blue";
 ctx.beginPath();
-ctx.arc(75 * pixelsPerMeter, 5 * pixelsPerMeter, pixelsPerMeter / 2, 0, 2 * Math.PI);
+ctx.arc(155 * pixelsPerMeter, 5 * pixelsPerMeter, pixelsPerMeter / 2, 0, 2 * Math.PI);
 ctx.fill(); // Optional: Fill the circle with color
 
 }
@@ -84,7 +86,7 @@ ctx.stroke();          // Render the line
 
 ctx.fillStyle = color;
 ctx.beginPath();
-ctx.arc(agent.xPos * pixelsPerMeter, -agent.yPos * pixelsPerMeter, 5, 0, 2 * Math.PI);
+ctx.arc(agent.xPos * pixelsPerMeter, -agent.yPos * pixelsPerMeter, 0.5 * pixelsPerMeter, 0, 2 * Math.PI);
 ctx.fill(); // Optional: Fill the circle with color
 
 ctx.strokeStyle = color;
@@ -99,20 +101,24 @@ function DrawTarget(x, y, id)
 const ctx = m_ctx;
 
 ctx.fillStyle = "Red";
-
 ctx.beginPath();
-ctx.arc(x * pixelsPerMeter, -y * pixelsPerMeter, 5, 0, 2 * Math.PI);
+ctx.arc(x * pixelsPerMeter, -y * pixelsPerMeter, 0.5 * pixelsPerMeter, 0, 2 * Math.PI);
 ctx.fill();
 
 ctx.strokeStyle = "Red";
 ctx.beginPath();
-ctx.arc(x * pixelsPerMeter, -y * pixelsPerMeter, targetRadius * pixelsPerMeter, 0, 2 * Math.PI);
+ctx.arc(x * pixelsPerMeter, -y * pixelsPerMeter, targetRadius * pixelsPerMeter, degreesToRadians(-15), degreesToRadians(15));
+ctx.arc(x * pixelsPerMeter, -y * pixelsPerMeter, targetRadius * pixelsPerMeter, degreesToRadians(180-15), degreesToRadians(180+15));
+ctx.moveTo((x-targetRadius) * pixelsPerMeter, -y * pixelsPerMeter);
+ctx.lineTo((x+targetRadius) * pixelsPerMeter, -y * pixelsPerMeter);
 ctx.stroke();
 
-ctx.font = "30px Arial";
+
+
+ctx.font = "15px Arial";
 ctx.fillStyle = "red";
 
-ctx.fillText(id, x * pixelsPerMeter + 10, -y * pixelsPerMeter - 10);
+ctx.fillText(id, x * pixelsPerMeter + (25 + targetRadius), -y * pixelsPerMeter - 15);
 }
 
 function RenderGraph()

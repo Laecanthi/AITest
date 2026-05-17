@@ -47,7 +47,7 @@ class NeuralNetwork
     }
 }
 
-function UpdateNeuralNetwork(network, agent)
+/*function UpdateNeuralNetwork(network, agent)
 {   
     const inputs = network.inputs;
     const cn1 = network.cn1;
@@ -79,7 +79,7 @@ function UpdateNeuralNetwork(network, agent)
 
     /**************************************** INPUTS ********************************/
 
-    inputs[0] = (targets[agent.targetID].X - agent.xPos) / 100;
+    /*inputs[0] = (targets[agent.targetID].X - agent.xPos) / 100;
     inputs[1] = (targets[agent.targetID].Y - agent.yPos) / 100;
     inputs[2] = Math.sin(agent.angle);
     inputs[3] = Math.cos(agent.angle);
@@ -200,7 +200,7 @@ function UpdateNeuralNetwork(network, agent)
                 sum * bufferPersistence
             );
     }
-}
+}*/
 
 function CloneNetwork(network)
 {
@@ -227,7 +227,7 @@ function CloneNetwork(network)
     return newNetwork;
 }
 
-function ResetLayers(network)
+/*function ResetLayers(network)
 {
     for (var node = 0; node < network.inputs.length; node++) {network.inputs[node] = 0;}
     for (var node = 0; node < network.hl1.length; node++) {network.hl1[node] = 0;}
@@ -235,4 +235,4 @@ function ResetLayers(network)
     for (var node = 0; node < network.outputs.length; node++) {network.outputs[node] = 0;}
     for (var node = 0; node < network.mb1.length; node++) {network.mb1[node] = 0;}
     for (var node = 0; node < network.mb2.length; node++) {network.mb2[node] = 0;}
-}
+}*/

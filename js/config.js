@@ -14,9 +14,9 @@ var padding = 25;
 var yMaxValue = 1000;
 var xMinValue = 0;
 
-const pixelsPerMeter = 10;
-const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
-const lerp = (start, end, t) => start + (end - start) * t;
+const pixelsPerMeter = 5;
+//const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+//const lerp = (start, end, t) => start + (end - start) * t;
 
 var agents = [];
 var neuralNetworks = [];
@@ -25,15 +25,11 @@ const amountOfAgents = 300;
 
 var time = 0;
 var generation = 0;
-var randomPosX = Math.random() * 80;
-var randomPosY = Math.random() * -60;
+var randomPosX = 0;
+var randomPosY = 0;
 
-var targets = [
-    {
-        X: 0,
-        Y: 0
-    }
-]
+var targetX = 80;
+var groundY = -120;
 
 var bestScore = []
 var averageScore = []
@@ -57,11 +53,6 @@ var simPlay = false;
 var simSpeed = 5;
 var simSubsteps = 5;
 
-var movingTargetTime = 0;
-var currentMovingTargetX = Math.random() * 80;
-var currentMovingTargetY = Math.random() * -60;
-var nextMovingTargetX = Math.random() * 80;
-var nextMovingTargetY = Math.random() * -60;
 var targetRadius = 1.5;
 var thrustBurn = 0;
 var maxThrustDuration = 15;
@@ -81,20 +72,17 @@ var lastVerifiedGeneration = 0;
 var inputLabels =
     [
         "Relative target x",
-        "Relative target y",
+        "Signed distance",
+        "Y Pos",
+        "X Pos",
         "Sine of angle",
         "Cosine of angle",
-        "Signed distance",
         "X Vel",
         "Y Vel",
         "Angular Vel",
         "Fuel",
-        "Y Pos",
-        "X Pos",
         "External Force X",
-        "External Force Y",
-        "Next target x",
-        "Next target y"
+        "External Force Y"
     ];
 
 var outputLabels =
