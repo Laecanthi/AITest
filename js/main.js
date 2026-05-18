@@ -15,6 +15,9 @@ const nonLeaderOpacitySlider =
 const renderSimulationCheckbox =
     document.getElementById("renderSimulationCheckbox");
 
+const stopAtGenerationCheckbox =
+    document.getElementById("stopAtGenerationCheckbox");
+
 speedSlider.oninput = function()
 {
     simSpeed = Number(this.value) / 10;
@@ -50,12 +53,18 @@ nonLeaderOpacitySlider.oninput = function()
 
 renderSimulationCheckbox.oninput = function()
 {
-    renderSimulation = this.checked;
-    if(renderSimulation) {
-        unrenderedLoopActive = false;
-        requestAnimationFrame(SystemLoop);
-    }
-}
+    pendingRenderMode = this.checked;
+
+    console.log(
+        "Queued render mode change:",
+        pendingRenderMode ? "rendered" : "unrendered"
+    );
+};
+
+stopAtGenerationCheckbox.oninput = function()
+{
+    stopAtGenerationEnd = this.checked;
+};
 
 // END OF SLIDERS AND CHECKBOXES
 
@@ -79,15 +88,15 @@ const resetButton =
 const confirmResetButton =
     document.getElementById("confirmResetButton");
 
-playButton.addEventListener('click', function() {
+const runGenerationButton =
+    document.getElementById("runGenerationButton");
+
+playButton.addEventListener('click', function()
+{
     simPlay = true;
-    // Start the loop
-    if(renderSimulation) {
-        requestAnimationFrame(SystemLoop);
-    } else {
-        unrenderedLoopActive = true;
-        startNextGeneration();
-    }
+    ignoreStops = true;
+
+    DoNextGeneration();
 });
 
 pauseButton.addEventListener('click', function() {
@@ -152,6 +161,17 @@ confirmResetButton.addEventListener('click', function() {
     confirmResetButton.classList.add("hide");
 });
 
+runGenerationButton.addEventListener('click', function()
+{
+    ignoreStops = true;
+
+    runSingleGeneration = true;
+
+    simPlay = true;
+
+    DoNextGeneration();
+});
+
 function BuildAgents() /********************************************** CREATE AGENTS ***********************************/
 {
     for(var i = 0; i < amountOfAgents; i++) 
@@ -180,13 +200,33 @@ function BuildAgents() /********************************************** CREATE AG
     }
 }
 
-
+let lastFrameTime = 0;
 
 function SystemLoop(timestamp) { /******************************************* SYSTEM LOOP ***********************************************/
-    const ctx = m_ctx;
-    //const deltaTime = Math.min((timestamp - lastTime) / 1000, 0.05) / simSubsteps;
+    
+    const targetFPS = 60;
+    const targetFrameTime = 1000 / targetFPS;
+
+    // initialize first frame
+    if(lastFrameTime === 0)
+    {
+        lastFrameTime = timestamp;
+    }
+
+    const elapsed = timestamp - lastFrameTime;
+
+    if(elapsed < targetFrameTime)
+    {
+        requestAnimationFrame(SystemLoop);
+        return;
+    }
+
+    // snap forward cleanly
+    lastFrameTime = timestamp - (elapsed % targetFrameTime);
+
     const deltaTime = 1/60/simSubsteps;
-    lastTime = timestamp;
+
+    const ctx = m_ctx;
 
     if(renderSimulation)
     {
@@ -194,7 +234,7 @@ function SystemLoop(timestamp) { /******************************************* SY
 
         const ctx = m_ctx;
 
-        Iterate(deltaTime);
+        const generationEnded = Iterate(deltaTime);
 
         render();
 
@@ -216,29 +256,22 @@ function SystemLoop(timestamp) { /******************************************* SY
 
         // Request the next frame to keep the loop running
 
+        if(generationEnded)
+        {
+            DoNextGeneration();
+            return;
+        }
+
         if(simPlay)
         {
             requestAnimationFrame(SystemLoop);
         }
       
-    }else{
-        if(!unrenderedLoopActive) {
-            unrenderedLoopActive = true;
-            UnrenderedLoop(); // this is getting a rehaul so ignoring pausing in this for now
-        }
-        // don't re-request an animation frame
     }
 }
 
-function UnrenderedLoop()
-{
-    if(!unrenderedLoopActive) return;
-    // just start the first generation, workers take it from here
-    startNextGeneration();
-}
-
 BuildAgents();
-SetNextGen(true);
+//SetNextGen(true);
 
 // WORKERS
 
@@ -271,7 +304,8 @@ for(let i = 0; i < NUM_WORKERS; i++)
             }
             
             //console.log(scores[0], scores[1], scores[2]);
-            SetNextGen();
+            DoNextGeneration();
+            //SetNextGen();
             // update curriculum etc
             RenderNetwork(neuralNetworks[0], false);
 
@@ -288,7 +322,7 @@ for(let i = 0; i < NUM_WORKERS; i++)
             }
 
             
-            startNextGeneration();
+            
         }
 
         
@@ -344,7 +378,7 @@ function startNextGeneration()
             generationLength,
             dt: 1/60/simSubsteps,
             thrustBurn, crashVelocity,
-            curriculumStage,
+            curriculumStage, generationSeed,
             networkShape: {
                 inputLen: neuralNetworks[0].inputs.length,
                 hl1Len: neuralNetworks[0].hl1.length,
@@ -352,5 +386,72 @@ function startNextGeneration()
                 outputLen: neuralNetworks[0].outputs.length,
             }
         });
+    }
+}
+
+function DoNextGeneration()
+{
+    //--------------------------------------------------
+    // APPLY PENDING RENDER MODE CHANGE
+    //--------------------------------------------------
+
+    if(pendingRenderMode !== null)
+    {
+        renderSimulation = pendingRenderMode;
+        pendingRenderMode = null;
+
+        console.log(
+            "Applied render mode:",
+            renderSimulation ? "rendered" : "unrendered"
+        );
+
+        if(renderSimulation)
+        {
+            unrenderedLoopActive = false;
+        }
+        else
+        {
+            unrenderedLoopActive = true;
+        }
+    }
+
+    //--------------------------------------------------
+    // STOP AT GENERATION END
+    //--------------------------------------------------
+
+    if(stopAtGenerationEnd || runSingleGeneration)
+    {
+        if(ignoreStops)
+        {
+            ignoreStops = false;
+        }else{
+            simPlay = false;
+
+            runSingleGeneration = false;
+
+            console.log("Paused at generation boundary");
+        }   
+    }
+
+    //--------------------------------------------------
+    // START NEXT GENERATION
+    //--------------------------------------------------
+
+    if(simPlay)
+    {
+        SetNextGen();
+
+        if(renderSimulation)
+        {
+            unrenderedLoopActive = false;
+            
+            requestAnimationFrame(SystemLoop);
+
+        }
+        else
+        {
+            unrenderedLoopActive = true;
+            startNextGeneration();
+        }
     }
 }

@@ -880,4 +880,37 @@ function RenderInfoGraphs()
         generationEvents,
         memoryHistory.length
     );
+
+    RenderNodeGraph(
+        con_ctx,
+        conditionsCanv,
+        conditionsHistory,
+        {
+            padding: padding,
+
+            minValue: -1,
+            maxValue: 1,
+
+            smooth: true,
+
+            lineWidth: 2,
+
+            drawBounds: true,
+
+            colorFunction: (node, total) =>
+            {
+                const hue =
+                    (node / total) * 300;
+
+                return `hsl(${hue},50%,40%)`;
+            }
+        }
+    );
+    AddTitle(con_ctx, conditionsCanv, "Conditions");
+    RenderEventGraph(
+        con_ctx,
+        conditionsCanv,
+        generationEvents,
+        memoryHistory.length
+    );
 }

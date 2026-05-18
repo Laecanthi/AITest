@@ -26,12 +26,14 @@ function Iterate(dt, step = false)
             {
                 scores[i] = CalculateScore(agents[i], targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity);
             }
-            SetNextGen();
-            continue;
+            //SetNextGen();
+            return true;
         }
 
         update(dt);
     }
+
+    return false;
 }
 
 function SetNextGen(initialize = false)
@@ -49,6 +51,7 @@ function SetNextGen(initialize = false)
     linearMHistory.length = 0;
     angularMHistory.length = 0;
     instabilityHistory.length = 0;
+    conditionsHistory.length = 0;
     generationEvents.length = 0;
     generationEventBools = [false, false, false, false, false, false];
     
@@ -64,6 +67,7 @@ function SetNextGen(initialize = false)
     generation++;
     
     generationLength = 30;
+    generationSeed = (Math.random() - 0.5) * 10000;
     mutationRate = CurriculumBlend([0.08,0.03,0.01]);
     mutationChance = CurriculumBlend([0.03,0.02,0.01]);
     targetRadius = CurriculumBlend([8,4,1.5]);
@@ -86,7 +90,7 @@ function update(dt) /***************************** UPDATE **********************
     RunStep(agents, neuralNetworks, targetX, groundY, targetRadius, dt, time,
                  thrustBurn, windForceX, windForceY, 
                  crashVelocity, curriculumStage,
-                 generationLength, scores);
+                 generationLength, scores, generationSeed);
 
     
 }

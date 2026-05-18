@@ -13,7 +13,7 @@ function ResetLayers(network)
     for (var node = 0; node < network.mb2.length; node++) {network.mb2[node] = 0;}
 }
 
-function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius) 
+function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius, dt) 
 {   
     const inputs = network.inputs;
     const cn1 = network.cn1;
@@ -168,7 +168,18 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius)
             sum = 0;
         }
 
-        const bufferPersistence = 0.005;
+        const memoryResponseRates = [
+            8.0,   // very fast
+            2.0,   // medium
+            0.5,   // slow
+            0.1    // very slow
+        ];
+
+        const responseRate =
+            memoryResponseRates[mb2Node]; // make sure the memory buffer is only 4 long or it will throw an error
+
+        const bufferPersistence =
+            1 - Math.exp(-responseRate * dt);
 
         const oldValue = mb2[mb2Node];
 
@@ -190,7 +201,7 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius)
 }
 
 
-function UpdateAgent(agent, dt, thrustBurn, windForceX, windForceY, crashVelocity, time)
+function UpdateAgent(agent, dt, thrustBurn, windForceX, windForceY, crashVelocity, time, generationSeed)
 {
     //agent.xThrust = clamp(agent.xThrust, -1, 1);
     //agent.yThrust = clamp(agent.yThrust, -1, 1);
@@ -218,6 +229,15 @@ function UpdateAgent(agent, dt, thrustBurn, windForceX, windForceY, crashVelocit
     let localWindMagnitude = Math.sin(time * 1.2) * Math.cos(time * 0.8);
     localWindMagnitude *= localWindMagnitude;
     localWindMagnitude += Math.sin(time);
+    localWindMagnitude++;
+
+    const windNoise = FractalNoise2D(
+        agent.xPos * 0.001,
+        agent.yPos * 0.01,
+        generationSeed
+    );
+
+    localWindMagnitude *= Amplify(windNoise) + 0.5; // wind tends to be near an extreme, and is more
 
     xExternalForce += windForceX * localWindMagnitude;
     yExternalForce += windForceY * localWindMagnitude;
@@ -269,7 +289,7 @@ function CurriculumBlend(array, stage = curriculumStage) {
 function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
                  thrustBurn, windForceX, windForceY, 
                  crashVelocity, curriculumStage,
-                 generationLength, scores)
+                 generationLength, scores, generationSeed)
 {
     for(let i = 0; i < agents.length; i++)
     {
@@ -279,7 +299,7 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
         var lastThrust = agents[i].thrust;
 
         UpdateNeuralNetwork(networks[i], agents[i],
-                           targetX, groundY, targetRadius);
+                           targetX, groundY, targetRadius, dt);
 
         const targetRotation = networks[i].outputs[0];
         const targetThrust = networks[i].outputs[1] / 2 + 0.5;
@@ -287,7 +307,7 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
         agents[i].rotation = lerp(agents[i].rotation, targetRotation, 0.15);
         agents[i].thrust = lerp(agents[i].thrust, targetThrust, 0.15);
 
-        UpdateAgent(agents[i], dt, thrustBurn, windForceX, windForceY, crashVelocity, time);
+        UpdateAgent(agents[i], dt, thrustBurn, windForceX, windForceY, crashVelocity, time, generationSeed);
 
         if(agents[i].yPos <= groundY)
         {
@@ -332,6 +352,12 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
             instabilityHistory.push([
                 networks[i].instability,
                 networks[i].memoryInstability
+            ]);
+
+            conditionsHistory.push([
+                agents[i].fuel / 250 - 1,
+                agents[i].xLastExternalForce / 10,
+                agents[i].yLastExternalForce / 10
             ]);
 
             // EVENTS
@@ -432,4 +458,88 @@ function CalculateScore(agent, targetX, groundY, targetRadius, generationLength,
     }
 
     return score;
+}
+
+//******************************* PERLIN NOISE ******************************************************/
+
+function Hash2D(x, y, seed)
+{
+    let h =
+        x * 374761393 +
+        y * 668265263 +
+        seed * 1446648777;
+
+    h = (h ^ (h >> 13)) * 1274126177;
+
+    return ((h ^ (h >> 16)) >>> 0) / 4294967295;
+}
+
+function Smooth(t)
+{
+    return t * t * (3 - 2 * t);
+}
+
+function Perlin2D(x, y, seed = 0)
+{
+    const x0 = Math.floor(x);
+    const y0 = Math.floor(y);
+
+    const x1 = x0 + 1;
+    const y1 = y0 + 1;
+
+    const sx = Smooth(x - x0);
+    const sy = Smooth(y - y0);
+
+    // corner random values
+    const n00 = Hash2D(x0, y0, seed);
+    const n10 = Hash2D(x1, y0, seed);
+
+    const n01 = Hash2D(x0, y1, seed);
+    const n11 = Hash2D(x1, y1, seed);
+
+    // interpolate x
+    const ix0 = lerp(n00, n10, sx);
+    const ix1 = lerp(n01, n11, sx);
+
+    // interpolate y
+    const value = lerp(ix0, ix1, sy);
+
+    // remap [0,1] -> [-1,1]
+    return value * 2 - 1;
+}
+
+function FractalNoise2D(x, y, seed)
+{
+    let value = 0;
+
+    let amplitude = 1;
+    let frequency = 1;
+
+    let totalAmplitude = 0;
+
+    for(let octave = 0; octave < 4; octave++)
+    {
+        value +=
+            Perlin2D(
+                x * frequency,
+                y * frequency,
+                seed + octave * 1000
+            ) * amplitude;
+
+        totalAmplitude += amplitude;
+
+        amplitude *= 0.5;
+        frequency *= 2;
+    }
+
+    return value / totalAmplitude;
+}
+
+function Amplify(input)
+{
+    let value = Math.abs(input);
+    value = 1 - value;
+    value *= value;
+    value = 1 - value;
+    return value * Math.sign(input);
 }

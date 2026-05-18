@@ -26,6 +26,10 @@ const instabilityCanv = document.getElementById("instability-canvas");
 const ins_ctx = instabilityCanv.getContext("2d");
 let instabilityHistory = [];
 
+const conditionsCanv = document.getElementById("conditions-canvas");
+const con_ctx = conditionsCanv.getContext("2d");
+let conditionsHistory = [];
+
 const genCanv = document.getElementById("generation-canvas");
 const g_ctx = genCanv.getContext("2d");
 var graphXScale;
@@ -66,9 +70,14 @@ var simSpeed;
 var simSubsteps;
 var mutationRate = 0.05;
 var generationLength = 5;
+var generationSeed = 0;
 var showOnlyLeader = false;
 var nonLeaderOpacity = 0.1;
 var renderSimulation = true;
+let pendingRenderMode = null;
+let stopAtGenerationEnd = false;
+let runSingleGeneration = false;
+let ignoreStops = false;
 
     let lastTime = 0;
 

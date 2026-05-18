@@ -8,7 +8,7 @@ onmessage = function(event) {
         generationLength, dt,
         workerIndex,
         thrustBurn, crashVelocity,
-        curriculumStage,
+        curriculumStage, generationSeed,
         networkShape 
     } = event.data;
 
@@ -32,7 +32,7 @@ onmessage = function(event) {
         RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
                  thrustBurn, windForceX, windForceY, 
                  crashVelocity, curriculumStage,
-                 generationLength, scores);
+                 generationLength, scores, generationSeed);
 
         let aliveCount = 0;
         for(const agent of agents)

@@ -12,6 +12,9 @@ canvas {
     background-color: lightgray;
     height: 200px;
 }
+.wide {
+    width: 1620px;
+}
 #controls {
     display: flex;
     width: 800px;

@@ -62,6 +62,11 @@
 
                                    <span id="nonLeaderOpacityLabel">0.50</span>
 
+                                   <br>
+
+                                   Stop at End of Generation:
+                                   <input type="checkbox" id="stopAtGenerationCheckbox">
+
                             </div>
 
                             <div class="column">
@@ -72,21 +77,25 @@
                                    <br>
                                    <button type="button" id="resetButton"> reset </button>
                                    <button type="button" id="confirmResetButton" class="hide"> confirm? </button>
+                                   <br>
+                                   <button type="button" id="runGenerationButton">run 1 generation</button>
                             </div>
 
                      </div>
 
                      <br>
 
-                     <canvas id="memory-canvas" class="graph" width="800" height="200"></canvas>
+                     <canvas id="memory-canvas" class="graph wide" width="1620" height="200"></canvas>
 
-                     <canvas id="output-canvas" class="graph" width="800" height="200"></canvas>
+                     <canvas id="output-canvas" class="graph wide" width="1620" height="200"></canvas>
 
-                     <canvas id="linearM-canvas" class="graph" width="800" height="200"></canvas>
+                     <canvas id="linearM-canvas" class="graph wide" width="1620" height="200"></canvas>
 
-                     <canvas id="angularM-canvas" class="graph" width="800" height="200"></canvas>
+                     <canvas id="angularM-canvas" class="graph wide" width="1620" height="200"></canvas>
 
-                     <canvas id="instability-canvas" class="graph" width="800" height="200"></canvas>
+                     <canvas id="instability-canvas" class="graph wide" width="1620" height="200"></canvas>
+
+                     <canvas id="conditions-canvas" class="graph wide" width="1620" height="200"></canvas>
 
               </div>
        </body>
