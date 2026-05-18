@@ -42,6 +42,15 @@ function SetNextGen(initialize = false)
 
     targetX = 80;
     targetX += (Math.random() - 0.5) * CurriculumBlend([0,15,40,80]);
+
+    memoryHistory.length = 0;
+    outputHistory.length = 0;
+    positionHistory.length = 0;
+    linearMHistory.length = 0;
+    angularMHistory.length = 0;
+    instabilityHistory.length = 0;
+    generationEvents.length = 0;
+    generationEventBools = [false, false, false, false, false, false];
     
     if(!initialize)
     {
@@ -51,6 +60,7 @@ function SetNextGen(initialize = false)
     }
     
     time = 0;
+    substepTime = 0;
     generation++;
     
     generationLength = 30;

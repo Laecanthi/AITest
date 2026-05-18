@@ -4,8 +4,30 @@ const m_ctx = canvas.getContext("2d");
 const networkCanv = document.getElementById("network-canvas");
 const n_ctx = networkCanv.getContext("2d");
 
-const graphCanv = document.getElementById("graph-canvas");
-const g_ctx = graphCanv.getContext("2d");
+const memoryCanv = document.getElementById("memory-canvas");
+const mem_ctx = memoryCanv.getContext("2d");
+const outputCanv = document.getElementById("output-canvas");
+const o_ctx = outputCanv.getContext("2d");
+let memoryHistory = [];
+let outputHistory = [];
+let generationEvents = [];
+let generationEventBools = [false, false, false, false, false, false];
+//const MEMORY_HISTORY_LIMIT = 15000;
+
+const linearMCanv = document.getElementById("linearM-canvas");
+const lm_ctx = linearMCanv.getContext("2d");
+const angularMCanv = document.getElementById("angularM-canvas");
+const am_ctx = angularMCanv.getContext("2d");
+let positionHistory = [];
+let linearMHistory = [];
+let angularMHistory = [];
+
+const instabilityCanv = document.getElementById("instability-canvas");
+const ins_ctx = instabilityCanv.getContext("2d");
+let instabilityHistory = [];
+
+const genCanv = document.getElementById("generation-canvas");
+const g_ctx = genCanv.getContext("2d");
 var graphXScale;
 var graphYScale;
 var yShift;
@@ -24,6 +46,7 @@ var scores = [];
 const amountOfAgents = 300;
 
 var time = 0;
+var substepTime = 0;
 var generation = 0;
 var randomPosX = 0;
 var randomPosY = 0;

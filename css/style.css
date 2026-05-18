@@ -1,20 +1,16 @@
 body {
     background-color: gray;
 }
-#main-canvas {
+canvas {
     width: 800px;
-    height: 600px;
-    background-color: dimgray;
 }
-#network-canvas {
-    width: 800px;
-    height: 600px;
+.large {
     background-color: dimgray;
+    height: 600px;
 }
-#graph-canvas {
-    width: 800px;
+.graph {
+    background-color: lightgray;
     height: 200px;
-    background-color: lightgrey;
 }
 #controls {
     display: flex;

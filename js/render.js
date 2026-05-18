@@ -125,7 +125,7 @@ function RenderGraph()
 {
 const ctx = g_ctx;
 
-graphXScale = (graphCanv.width - padding * 2) / Math.max(1, bestScore.length - 1 - xMinValue);
+graphXScale = (genCanv.width - padding * 2) / Math.max(1, bestScore.length - 1 - xMinValue);
 
 let maxLogValue = 0;
 let minLogValue = Infinity;
@@ -148,12 +148,12 @@ for (const array of allArrays)
     }
 }
 
-graphYScale = (graphCanv.height - padding * 2) / (maxLogValue - minLogValue);
+graphYScale = (genCanv.height - padding * 2) / (maxLogValue - minLogValue);
 
 yShift = minLogValue * graphYScale - padding;
 xShift = padding;
 
-ctx.clearRect(0, 0, graphCanv.width, graphCanv.height);
+ctx.clearRect(0, 0, genCanv.width, genCanv.height);
 
 PlotArray(bestScore, "Black");
 PlotArray(averageScore, "Green");
@@ -163,19 +163,21 @@ PlotArray(worstScore, "Red");
 ctx.strokeStyle = "Black";
 
 ctx.beginPath();
-ctx.moveTo(0, yShift + graphCanv.height);
-ctx.lineTo(graphCanv.width, yShift + graphCanv.height);
-ctx.moveTo(0, yShift + graphCanv.height + (1000 * graphYScale));
-ctx.lineTo(graphCanv.width, yShift + graphCanv.height + (1000 * graphYScale));
-ctx.moveTo(0, yShift + graphCanv.height + (10000 * graphYScale));
-ctx.lineTo(graphCanv.width, yShift + graphCanv.height + (10000 * graphYScale));
-ctx.moveTo(0, yShift + graphCanv.height + (20000 * graphYScale));
-ctx.lineTo(graphCanv.width, yShift + graphCanv.height + (20000 * graphYScale));
-ctx.moveTo(0, yShift + graphCanv.height + (50000 * graphYScale));
-ctx.lineTo(graphCanv.width, yShift + graphCanv.height + (50000 * graphYScale));
-ctx.moveTo(0, yShift + graphCanv.height + (100000 * graphYScale));
-ctx.lineTo(graphCanv.width, yShift + graphCanv.height + (100000 * graphYScale));
+ctx.moveTo(0, yShift + genCanv.height);
+ctx.lineTo(genCanv.width, yShift + genCanv.height);
+ctx.moveTo(0, yShift + genCanv.height + (1000 * graphYScale));
+ctx.lineTo(genCanv.width, yShift + genCanv.height + (1000 * graphYScale));
+ctx.moveTo(0, yShift + genCanv.height + (10000 * graphYScale));
+ctx.lineTo(genCanv.width, yShift + genCanv.height + (10000 * graphYScale));
+ctx.moveTo(0, yShift + genCanv.height + (20000 * graphYScale));
+ctx.lineTo(genCanv.width, yShift + genCanv.height + (20000 * graphYScale));
+ctx.moveTo(0, yShift + genCanv.height + (50000 * graphYScale));
+ctx.lineTo(genCanv.width, yShift + genCanv.height + (50000 * graphYScale));
+ctx.moveTo(0, yShift + genCanv.height + (100000 * graphYScale));
+ctx.lineTo(genCanv.width, yShift + genCanv.height + (100000 * graphYScale));
 ctx.stroke();
+
+AddTitle(ctx, genCanv, "Generation");
 }
 
 function PlotArray(array, color)
@@ -188,14 +190,14 @@ ctx.strokeStyle = color;
 
 ctx.beginPath();
 
-let firstY = graphCanv.height - (LogTransform(array[xMinValue] + 1) * graphYScale);
+let firstY = genCanv.height - (LogTransform(array[xMinValue] + 1) * graphYScale);
 
 ctx.moveTo(padding, firstY + yShift);
 
 for(var i = xMinValue; i < array.length; i++)
 {
     let y =
-        graphCanv.height -
+        genCanv.height -
         (LogTransform(array[i] + 1) * graphYScale);
 
     ctx.lineTo((i - xMinValue) * graphXScale + padding, y + yShift);
@@ -461,4 +463,421 @@ if(scores[network.i] != null)
     ctx.fillText("Score: " + 0.00, W - 225, H - pad.bottom - 100);
 }
 ctx.fillText("Last Score: " + network.lastScore.toFixed(2), W - 225, H - pad.bottom - 75)
+}
+
+function RenderNodeGraph(ctx, canvas, history, options = {})
+{
+    if(history.length < 2) return;
+
+    //-----------------------------------
+    // OPTIONS
+    //-----------------------------------
+
+    const {
+        padding = 20,
+
+        minValue = -1,
+        maxValue = 1,
+
+        clear = true,
+
+        lineWidth = 1,
+
+        smooth = false,
+
+        colorFunction = (node, totalNodes) =>
+        {
+            const hue =
+                (node / totalNodes) * 300;
+
+            return `hsl(${hue},100%,50%)`;
+        },
+
+        drawBounds = true
+    } = options;
+
+    //-----------------------------------
+    // SETUP
+    //-----------------------------------
+
+    const W = canvas.width;
+    const H = canvas.height;
+
+    if(clear)
+    {
+        ctx.clearRect(0,0,W,H);
+    }
+
+    const totalNodes =
+        history[0].length;
+
+    const xScale =
+        (W - padding * 2) /
+        Math.max(1, history.length - 1);
+
+    const valueRange =
+        maxValue - minValue;
+
+    
+
+    //-----------------------------------
+    // BOUNDARY LINES
+    //-----------------------------------
+
+    if(drawBounds)
+    {
+        ctx.strokeStyle = "black";
+
+        ctx.beginPath();
+
+        // center
+        ctx.moveTo(0, H/2);
+        ctx.lineTo(W, H/2);
+
+        // top
+        ctx.moveTo(0, padding);
+        ctx.lineTo(W, padding);
+
+        // bottom
+        ctx.moveTo(0, H - padding);
+        ctx.lineTo(W, H - padding);
+
+        ctx.stroke();
+    }
+
+    //-----------------------------------
+    // DRAW ALL NODES
+    //-----------------------------------
+
+    ctx.lineWidth = lineWidth;
+
+    for(let node = 0; node < totalNodes; node++)
+    {
+        ctx.strokeStyle =
+            colorFunction(node, totalNodes);
+
+        ctx.beginPath();
+
+        for(let i = 0; i < history.length; i++)
+        {
+            let value = 0;
+            if(smooth)
+            {
+                    value =
+                        RollingAverage2D(
+                            history,
+                            i,
+                            node,
+                            10
+                        );
+            }else{
+                value = history[i][node];
+            }
+
+            const normalized =
+                (value - minValue) / valueRange;
+
+            const x =
+                i * xScale + padding;
+
+            const y =
+                H - padding -
+                normalized * (H - padding * 2);
+
+            if(i === 0)
+            {
+                ctx.moveTo(x, y);
+            }
+            else
+            {
+                ctx.lineTo(x, y);
+            }
+        }
+
+        ctx.stroke();
+    }
+
+    ctx.lineWidth = 1;
+}
+
+function AddTitle(ctx, canvas, title)
+{
+    ctx.fillStyle = "black";
+    ctx.font = "12px Arial";
+    ctx.textAlign = "left";
+
+    ctx.fillText(title, padding / 2, padding / 2);
+}
+
+function RenderEventGraph(ctx, canvas, events, maxLength, options = {})
+{
+    //-----------------------------------
+    // OPTIONS
+    //-----------------------------------
+
+    const {
+        padding = 20,
+
+        lineColor = "rgba(0,0,0,0.4)",
+        textColor = "black",
+
+        font = "12px Arial",
+
+        staggerHeight = 14,
+
+        lineWidth = 1
+    } = options;
+
+    //-----------------------------------
+    // SETUP
+    //-----------------------------------
+
+    const W = canvas.width;
+    const H = canvas.height;
+
+    const graphWidth =
+        W - padding * 2;
+
+    //ctx.save();
+
+    ctx.font = font;
+    ctx.fillStyle = textColor;
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = lineWidth;
+
+    //-----------------------------------
+    // DRAW EVENTS
+    //-----------------------------------
+
+    for(let i = 0; i < events.length; i++)
+    {
+        const event = events[i];
+
+        const normalizedX =
+            event.x / Math.max(1, maxLength);
+
+        const x =
+            padding + normalizedX * graphWidth;
+
+        //-----------------------------------
+        // vertical line
+        //-----------------------------------
+
+        ctx.beginPath();
+
+        ctx.moveTo(x, padding);
+
+        ctx.lineTo(x, H - padding);
+
+        ctx.stroke();
+
+        //-----------------------------------
+        // label
+        //-----------------------------------
+
+        // stagger labels so they don't overlap horribly
+        const y =
+            H - padding * 2 +
+            ((i % 3) * staggerHeight);
+
+        ctx.fillText(
+            event.label,
+            x + 4,
+            y
+        );
+    }
+
+    //ctx.restore();
+}
+
+function RenderInfoGraphs()
+{
+    RenderNodeGraph(
+        mem_ctx,
+        memoryCanv,
+        memoryHistory,
+        {
+            padding: padding,
+
+            minValue: -1,
+            maxValue: 1,
+
+            smooth: true,
+
+            lineWidth: 2,
+
+            colorFunction: (node, total) =>
+            {
+                const hue =
+                    (node / total) * 300;
+
+                return `hsl(${hue},100%,50%)`;
+            }
+        }
+    );
+    AddTitle(mem_ctx, memoryCanv, "Memory");
+    RenderEventGraph(
+        mem_ctx,
+        memoryCanv,
+        generationEvents,
+        memoryHistory.length
+    );
+
+    RenderNodeGraph(
+        o_ctx,
+        outputCanv,
+        outputHistory,
+        {
+            padding: padding,
+
+            minValue: -1,
+            maxValue: 1,
+
+            smooth: true,
+
+            clear: true,
+
+            lineWidth: 2,
+
+            colorFunction: (node) =>
+            {
+                const colors = ["blue", "green", "black", "red"];
+                return colors[node];
+            },
+
+            drawBounds: true
+        }
+    );
+    AddTitle(o_ctx, outputCanv, "Outputs");
+    RenderEventGraph(
+        o_ctx,
+        outputCanv,
+        generationEvents,
+        memoryHistory.length
+    );
+
+    let largestAbs = LargestAbs2D(linearMHistory);
+
+    RenderNodeGraph(
+        lm_ctx,
+        linearMCanv,
+        linearMHistory,
+        {
+            padding: padding,
+
+            minValue: -largestAbs,
+            maxValue: largestAbs,
+
+            smooth: true,
+
+            lineWidth: 2,
+
+            colorFunction: (node, total) =>
+            {
+                const hue = node % 2 === 0 ? 0 : 240;
+                const value = (node - (node % 2)) / total * 50 + 25;
+
+                return `hsl(${hue},${value}%,${value}%)`;
+            }
+        }
+    );
+
+    RenderNodeGraph(
+        lm_ctx,
+        linearMCanv,
+        positionHistory,
+        {
+            padding: padding,
+
+            minValue: -1,
+            maxValue: 1,
+
+            clear: false,
+
+            smooth: true,
+
+            lineWidth: 2,
+
+            colorFunction: (node) =>
+            {
+                return node === 0 ? "blue" : "red";
+            },
+
+            drawBounds: false
+        }
+    );
+
+    AddTitle(lm_ctx, linearMCanv, "Linear Motion");
+    RenderEventGraph(
+        lm_ctx,
+        linearMCanv,
+        generationEvents,
+        memoryHistory.length
+    );
+
+    RenderNodeGraph(
+        am_ctx,
+        angularMCanv,
+        angularMHistory,
+        {
+            padding: padding,
+
+            minValue: -1,
+            maxValue: 1,
+
+            smooth: true,
+
+            lineWidth: 2,
+
+            colorFunction: (node, total) =>
+            {
+                const hue =
+                    (node / total) * 300;
+
+                return `hsl(${hue},50%,40%)`;
+            }
+        }
+    );
+    AddTitle(am_ctx, angularMCanv, "Angular Motion");
+    RenderEventGraph(
+        am_ctx,
+        angularMCanv,
+        generationEvents,
+        memoryHistory.length
+    );
+
+    largestAbs = LargestAbs2D(instabilityHistory);
+
+    RenderNodeGraph(
+        ins_ctx,
+        instabilityCanv,
+        instabilityHistory,
+        {
+            padding: padding,
+
+            minValue: 0,
+            maxValue: largestAbs,
+
+            smooth: true,
+
+            lineWidth: 2,
+
+            drawBounds: false,
+
+            colorFunction: (node, total) =>
+            {
+                const hue =
+                    (node / total) * 300;
+
+                return `hsl(${hue},50%,40%)`;
+            }
+        }
+    );
+    AddTitle(ins_ctx, instabilityCanv, "Instability");
+    RenderEventGraph(
+        ins_ctx,
+        instabilityCanv,
+        generationEvents,
+        memoryHistory.length
+    );
 }

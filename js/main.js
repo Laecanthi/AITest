@@ -200,6 +200,8 @@ function SystemLoop(timestamp) { /******************************************* SY
 
         RenderNetwork(neuralNetworks[0], true);
 
+        RenderInfoGraphs();
+
         ctx.font = "30px Arial";
         ctx.fillStyle = "black";
 

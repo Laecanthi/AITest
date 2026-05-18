@@ -36,6 +36,9 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius)
     const mb2Len = mb2.length;
     const totalOutputs = outputsLen + mb1Len + mb2Len;
 
+    let instability = network.instability;
+    let memoryInstability = network.memoryInstability;
+
     /**************************************** INPUTS ********************************/
 
     inputs[0] = (targetX - agent.xPos) / 100; // difference X
@@ -77,7 +80,13 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius)
             sum += mb2[mb2Node] * cn1[connection];
         }
 
-        hl1[hl1Node] = SoftClamp(sum);
+        const oldValue = hl1[hl1Node];
+
+        const newValue = SoftClamp(sum);
+
+        instability += Math.abs(newValue - oldValue);
+
+        hl1[hl1Node] = newValue;
     }
 
     //update hl2
@@ -92,7 +101,13 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius)
             sum += hl1[hl1Node] * cn2[connection];
         }
 
-        hl2[hl2Node] = SoftClamp(sum);
+        const oldValue = hl2[hl2Node];
+
+        const newValue = SoftClamp(sum);
+
+        instability += Math.abs(newValue - oldValue);
+
+        hl2[hl2Node] = newValue;
     }
 
     //update outputs
@@ -107,7 +122,13 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius)
             sum += hl2[hl2Node] * cn3[connection];
         }
 
-        outputs[outputNode] = SoftClamp(sum);
+        const oldValue = outputs[outputNode];
+
+        const newValue = SoftClamp(sum);
+
+        instability += Math.abs(newValue - oldValue);
+
+        outputs[outputNode] = newValue;
     }
 
     // update mb1: overwrite buffer
@@ -121,7 +142,13 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius)
             sum += hl2[hl2Node] * cn3[connection];
         }
 
-        mb1[mb1Node] = SoftClamp(sum);
+        const oldValue = mb1[mb1Node];
+
+        const newValue = SoftClamp(sum);
+
+        memoryInstability += Math.abs(newValue - oldValue);
+
+        mb1[mb1Node] = newValue;
     }
 
     // update mb2: persistent buffer
@@ -141,14 +168,25 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius)
             sum = 0;
         }
 
-        const bufferPersistence = 0.05;
+        const bufferPersistence = 0.005;
 
-        mb2[mb2Node] =
-            SoftClamp(
+        const oldValue = mb2[mb2Node];
+
+        const newValue = SoftClamp(
                 mb2[mb2Node] * (1 - bufferPersistence) +
                 sum * bufferPersistence
             );
+
+        memoryInstability += Math.abs(newValue - oldValue);
+
+        mb2[mb2Node] = newValue;
     }
+
+    network.instability =
+        instability / (hl1Len + hl2Len + outputsLen);
+
+    network.memoryInstability =
+        memoryInstability / (mb1Len + mb2Len);
 }
 
 
@@ -251,15 +289,89 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
 
         UpdateAgent(agents[i], dt, thrustBurn, windForceX, windForceY, crashVelocity, time);
 
-        // scoring - actually soon enough this won't be here, just to test for now
-        /*scores[i] += CalculateStepRewards(agents[i], targetX, targetRadius, dt, time,
-                                          generationLength, curriculumStage,
-                                          lastRotation, lastThrust);*/
-
         if(agents[i].yPos <= groundY)
         {
             agents[i].alive = false;
             agents[i].timeOfDeath = time;
+        }
+
+        // RECORD LEADER MEMORY HISTORY (rendered mode only)
+        if(typeof renderSimulation != 'undefined' && i === 0) // renderSimulation doesn't exist for the web workers, and thus should return false in unrendered mode anyways
+        {
+            substepTime++;
+
+            memoryHistory.push([
+                ...networks[i].mb1,
+                ...networks[i].mb2
+            ]);
+
+            outputHistory.push([
+                ...networks[i].outputs,
+                agents[i].rotation,
+                agents[i].thrust
+            ]);
+
+            positionHistory.push([
+                (agents[i].xPos - 80) / 80,
+                (agents[i].yPos + 60) / 60
+            ]);
+
+            linearMHistory.push([
+                agents[i].xVel,
+                agents[i].yVel,
+                agents[i].xAcc,
+                agents[i].yAcc
+            ]);
+
+            angularMHistory.push([
+                agents[i].angle / Math.PI,
+                agents[i].aVel,
+                agents[i].aAcc
+            ]);
+
+            instabilityHistory.push([
+                networks[i].instability,
+                networks[i].memoryInstability
+            ]);
+
+            // EVENTS
+
+            if(!generationEventBools[0] && !agents[i].alive) // when agent first reaches ground
+            {
+                generationEvents.push({x: substepTime, label: "touchdown"})
+                generationEventBools[0] = true;
+            }
+
+            if(!generationEventBools[1] && agents[i].yVel < -0.01-crashVelocity) // when agent first reaches crash velocity
+            {
+                generationEvents.push({x: substepTime, label: "high velocity"})
+                generationEventBools[1] = true;
+            }
+
+            if(generationEventBools[1] && !generationEventBools[2] && agents[i].yVel > 0.01-crashVelocity) // after entering crash velocity, this is when the agent first exits
+            {
+                generationEvents.push({x: substepTime, label: "low velocity"})
+                generationEventBools[2] = true;
+            }
+
+            if(!generationEventBools[3] && agents[i].yPos <= groundY + 10) // when agent is 10 meters above the ground
+            {
+                generationEvents.push({x: substepTime, label: "10 meters"})
+                generationEventBools[3] = true;
+            }
+
+            if(!generationEventBools[4] && agents[i].yPos <= groundY + 1) // when agent is 1 meters above the ground
+            {
+                generationEvents.push({x: substepTime, label: "1 meter"})
+                generationEventBools[4] = true;
+            }
+
+            if(!generationEventBools[5] && agents[i].fuel <= 0) // when agent runs out of fuel
+            {
+                generationEvents.push({x: substepTime, label: "out of fuel"})
+                generationEventBools[5] = true;
+            }
+
         }
     }
 }

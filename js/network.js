@@ -19,6 +19,9 @@ class NeuralNetwork
     id
     lastScore
 
+    instability
+    memoryInstability
+
     constructor (i, h1, h2, o, m1, m2)
     {
         this.inputs = new Float32Array(i);
@@ -44,6 +47,9 @@ class NeuralNetwork
         }
         
         this.lastScore = 0;
+
+        this.instability = 0;
+        this.memoryInstability = 0;
     }
 }
 
