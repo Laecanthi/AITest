@@ -238,6 +238,8 @@ function SystemLoop(timestamp) { /******************************************* SY
 
         render();
 
+        RenderTrajectory(trajectory, "Red", true);
+
         RenderNetwork(neuralNetworks[0], true);
 
         RenderInfoGraphs();
@@ -286,10 +288,25 @@ for(let i = 0; i < NUM_WORKERS; i++)
     
     worker.onmessage = function(event)
     {
-        const { scores: workerResult, workerIndex } = event.data;
+        const { scores: workerResult, workerIndex, trajX, trajY } = event.data;
         const sliceStart = workerIndex * (amountOfAgents / NUM_WORKERS);
         for(let j = 0; j < workerResult.length; j++) {
             workerScores[sliceStart + j] = workerResult[j];
+        }
+
+        //console.log(trajX, trajY);
+
+        if(workerIndex == 0)
+        {
+            for(let i = 0; i < trajX.length; i++)
+            {
+                trajectory.push([
+                    trajX[i],
+                    trajY[i]
+                ]);
+            }
+
+            //console.log(trajectory);
         }
 
         workersFinished++;
@@ -304,12 +321,12 @@ for(let i = 0; i < NUM_WORKERS; i++)
             }
             
             //console.log(scores[0], scores[1], scores[2]);
-            DoNextGeneration();
+            
             //SetNextGen();
             // update curriculum etc
             RenderNetwork(neuralNetworks[0], false);
 
-            m_ctx.clearRect(0,0,canvas.width,canvas.height);
+            UnrenderedSnapshot();
 
             m_ctx.font = "30px Arial";
             m_ctx.fillStyle = "black";
@@ -321,7 +338,7 @@ for(let i = 0; i < NUM_WORKERS; i++)
                 m_ctx.fillText(generation, 10, 30);
             }
 
-            
+            DoNextGeneration();
             
         }
 
@@ -379,6 +396,7 @@ function startNextGeneration()
             dt: 1/60/simSubsteps,
             thrustBurn, crashVelocity,
             curriculumStage, generationSeed,
+            trajectory,
             networkShape: {
                 inputLen: neuralNetworks[0].inputs.length,
                 hl1Len: neuralNetworks[0].hl1.length,

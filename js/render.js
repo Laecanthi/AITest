@@ -55,6 +55,28 @@ ctx.fill(); // Optional: Fill the circle with color
 
 }
 
+function UnrenderedSnapshot()
+{
+    const ctx = m_ctx;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    RenderTrajectory(trajectory, "Red", true);
+
+    DrawTarget(targetX, groundY, "Landing pad");
+
+    ctx.strokeStyle = "Blue";
+    ctx.beginPath();
+    ctx.moveTo(155 * pixelsPerMeter, 5 * pixelsPerMeter);
+    ctx.lineTo((155 + (windForceX + Math.cos(windDirection))) * pixelsPerMeter, (5 - (windForceY + Math.sin(windDirection))) * pixelsPerMeter);
+    ctx.stroke();
+
+    ctx.fillStyle = "Blue";
+    ctx.beginPath();
+    ctx.arc(155 * pixelsPerMeter, 5 * pixelsPerMeter, pixelsPerMeter / 2, 0, 2 * Math.PI);
+    ctx.fill(); // Optional: Fill the circle with color
+}
+
 function DrawAgent(agent, color = "Black")
 {
 const ctx = m_ctx;
@@ -913,4 +935,53 @@ function RenderInfoGraphs()
         generationEvents,
         memoryHistory.length
     );
+}
+
+function RenderTrajectory(positions, color = "Black", gradient = false)
+{
+        const ctx = m_ctx;
+
+        if(!gradient)
+        {
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+
+            for(let i = 0; i < positions.length; i++)
+            {
+                const x = positions[i][0] * pixelsPerMeter;
+                const y = positions[i][1] * pixelsPerMeter;
+
+                if(i === 0)
+                {
+                    ctx.moveTo(x, -y);
+                }
+                else
+                {
+                    ctx.lineTo(x, -y);
+                }
+            }
+
+            ctx.stroke();
+        }else{
+            
+            for(let i = 1; i < positions.length; i++)
+            {
+                const hue =(i / positions.length) * 300;
+                ctx.strokeStyle = `hsl(${hue},50%,40%)`;
+
+                const x = positions[i][0] * pixelsPerMeter;
+                const y = positions[i][1] * pixelsPerMeter;
+
+                ctx.beginPath();
+                ctx.moveTo(positions[i-1][0] * pixelsPerMeter, -(positions[i-1][1] * pixelsPerMeter));
+                ctx.lineTo(x, -y);
+                ctx.stroke();
+            }
+
+            
+        }
+
+        //console.log(positions);
+        //console.log("Trajectory Rendered!");
+        
 }

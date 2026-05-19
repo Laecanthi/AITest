@@ -25,6 +25,8 @@ onmessage = function(event) {
     const scores = new Array(agents.length).fill(0);
     let time = 0;
 
+    let trajectory = [];
+
     while(time < generationLength)
     {
         time += dt;
@@ -32,7 +34,9 @@ onmessage = function(event) {
         RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
                  thrustBurn, windForceX, windForceY, 
                  crashVelocity, curriculumStage,
-                 generationLength, scores, generationSeed);
+                 generationLength, scores, generationSeed, trajectory);
+
+        //console.log(trajectory);
 
         let aliveCount = 0;
         for(const agent of agents)
@@ -50,5 +54,14 @@ onmessage = function(event) {
         scores[i] = CalculateScore(agents[i], targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity);
     }
 
-    postMessage({ scores, workerIndex });
+    const trajX = new Array(trajectory.length);
+    const trajY = new Array(trajectory.length)
+
+    for(let i = 0; i < trajectory.length; i++)
+    {
+        trajX[i] = trajectory[i][0];
+        trajY[i] = trajectory[i][1];
+    }
+
+    postMessage({ scores, workerIndex, trajX, trajY });
 };

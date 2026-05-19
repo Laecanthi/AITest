@@ -48,6 +48,7 @@ function SetNextGen(initialize = false)
     memoryHistory.length = 0;
     outputHistory.length = 0;
     positionHistory.length = 0;
+    trajectory.length = 0;
     linearMHistory.length = 0;
     angularMHistory.length = 0;
     instabilityHistory.length = 0;
@@ -90,7 +91,7 @@ function update(dt) /***************************** UPDATE **********************
     RunStep(agents, neuralNetworks, targetX, groundY, targetRadius, dt, time,
                  thrustBurn, windForceX, windForceY, 
                  crashVelocity, curriculumStage,
-                 generationLength, scores, generationSeed);
+                 generationLength, scores, generationSeed, trajectory);
 
     
 }

@@ -19,6 +19,7 @@ const lm_ctx = linearMCanv.getContext("2d");
 const angularMCanv = document.getElementById("angularM-canvas");
 const am_ctx = angularMCanv.getContext("2d");
 let positionHistory = [];
+let trajectory = [];
 let linearMHistory = [];
 let angularMHistory = [];
 

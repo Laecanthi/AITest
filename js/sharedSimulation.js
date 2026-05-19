@@ -289,7 +289,7 @@ function CurriculumBlend(array, stage = curriculumStage) {
 function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
                  thrustBurn, windForceX, windForceY, 
                  crashVelocity, curriculumStage,
-                 generationLength, scores, generationSeed)
+                 generationLength, scores, generationSeed, traj)
 {
     for(let i = 0; i < agents.length; i++)
     {
@@ -313,6 +313,14 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
         {
             agents[i].alive = false;
             agents[i].timeOfDeath = time;
+        }
+
+        if(i === 0)
+        {
+            traj.push([
+                agents[i].xPos,
+                agents[i].yPos
+            ])
         }
 
         // RECORD LEADER MEMORY HISTORY (rendered mode only)
