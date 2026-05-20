@@ -13,7 +13,7 @@ function ResetLayers(network)
     for (var node = 0; node < network.mb2.length; node++) {network.mb2[node] = 0;}
 }
 
-function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius, dt) 
+function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius, dt, generationSeed, curriculumStage, obstacles) 
 {   
     const inputs = network.inputs;
     const cn1 = network.cn1;
@@ -38,11 +38,12 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius, dt)
 
     let instability = network.instability;
     let memoryInstability = network.memoryInstability;
+    const velocityDir = Math.atan2(agent.yVel, agent.xVel);
 
     /**************************************** INPUTS ********************************/
 
     inputs[0] = (targetX - agent.xPos) / 100; // difference X
-    inputs[1] = (groundY - agent.yPos) / 100; // difference Y
+    inputs[1] = (GetGroundHeight(targetX, groundY, generationSeed, targetX, targetRadius, curriculumStage) - agent.yPos) / 100; // difference Y
     inputs[2] = (agent.yPos + 60) / 100; // y pos
     inputs[3] = (agent.xPos - 80) / 100; // x pos
     inputs[4] = Math.sin(agent.angle);
@@ -53,6 +54,10 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius, dt)
     inputs[9] = agent.fuel / 500;
     inputs[10] = agent.xLastExternalForce / 10;
     inputs[11] = agent.yLastExternalForce / 10;
+
+    inputs[12] = RaycastStep(agent.xPos, agent.yPos, agent.angle, 25, obstacles, groundY, generationSeed, targetX, targetRadius, curriculumStage);
+    inputs[13] = RaycastStep(agent.xPos, agent.yPos, velocityDir, 25, obstacles, groundY, generationSeed, targetX, targetRadius, curriculumStage);
+    inputs[14] = RaycastStep(agent.xPos, agent.yPos, -Math.PI / 2, 25, obstacles, groundY, generationSeed, targetX, targetRadius, curriculumStage);
 
     // end of inputs
 
@@ -289,7 +294,7 @@ function CurriculumBlend(array, stage = curriculumStage) {
 function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
                  thrustBurn, windForceX, windForceY, 
                  crashVelocity, curriculumStage,
-                 generationLength, scores, generationSeed, traj)
+                 generationLength, scores, generationSeed, traj, trajVal, obstacles)
 {
     for(let i = 0; i < agents.length; i++)
     {
@@ -299,7 +304,7 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
         var lastThrust = agents[i].thrust;
 
         UpdateNeuralNetwork(networks[i], agents[i],
-                           targetX, groundY, targetRadius, dt);
+                           targetX, groundY, targetRadius, dt, generationSeed, curriculumStage, obstacles);
 
         const targetRotation = networks[i].outputs[0];
         const targetThrust = networks[i].outputs[1] / 2 + 0.5;
@@ -309,7 +314,16 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
 
         UpdateAgent(agents[i], dt, thrustBurn, windForceX, windForceY, crashVelocity, time, generationSeed);
 
-        if(agents[i].yPos <= groundY)
+        if (CollideAnything(
+                agents[i].xPos,
+                agents[i].yPos,
+                obstacles,
+                groundY,
+                generationSeed,
+                targetX,
+                targetRadius,
+                curriculumStage
+            ))
         {
             agents[i].alive = false;
             agents[i].timeOfDeath = time;
@@ -320,7 +334,10 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
             traj.push([
                 agents[i].xPos,
                 agents[i].yPos
-            ])
+            ]);
+            trajVal.push([
+                Math.sqrt(agents[i].xVel*agents[i].xVel + agents[i].yVel*agents[i].yVel) / 3
+            ]);
         }
 
         // RECORD LEADER MEMORY HISTORY (rendered mode only)
@@ -388,13 +405,13 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
                 generationEventBools[2] = true;
             }
 
-            if(!generationEventBools[3] && agents[i].yPos <= groundY + 10) // when agent is 10 meters above the ground
+            if(!generationEventBools[3] && agents[i].yPos <= GetGroundHeight(agents[i].xPos, groundY, generationSeed, targetX, targetRadius, curriculumStage) + 10) // when agent is 10 meters above the ground
             {
                 generationEvents.push({x: substepTime, label: "10 meters"})
                 generationEventBools[3] = true;
             }
 
-            if(!generationEventBools[4] && agents[i].yPos <= groundY + 1) // when agent is 1 meters above the ground
+            if(!generationEventBools[4] && agents[i].yPos <= GetGroundHeight(agents[i].xPos, groundY, generationSeed, targetX, targetRadius, curriculumStage) + 1) // when agent is 1 meters above the ground
             {
                 generationEvents.push({x: substepTime, label: "1 meter"})
                 generationEventBools[4] = true;
@@ -410,7 +427,7 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
     }
 }
 
-function CalculateScore(agent, targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity)
+function CalculateScore(agent, targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed)
 {
     // agent never landed - worst possible outcome
     if(agent.alive)
@@ -419,6 +436,7 @@ function CalculateScore(agent, targetX, groundY, targetRadius, generationLength,
     }
 
     let score = 0;
+    const targetY = GetGroundHeight(targetX, groundY, generationSeed, targetX, targetRadius, curriculumStage);
 
     // LANDING VELOCITY - most important
     // lower is better, hard score = bad
@@ -447,11 +465,13 @@ function CalculateScore(agent, targetX, groundY, targetRadius, generationLength,
     const horizontalError = Math.abs(agent.xPos - targetX);
     score += horizontalError * 20;
 
-    // big reward for landing in target zone
-    if(horizontalError <= targetRadius)
+    // big reward for landing in target zone, else punishment for distance (when obstacles become a bigger issue, there needs to be at least some guidance towards target)
+    if(horizontalError <= targetRadius && agent.yPos < targetY + 1)
     {
         score -= 2000;
         score -= (targetRadius - horizontalError) / targetRadius * 2000; // extra bonus for landing in the center of the target zone
+    }else{
+        score += Math.sqrt(horizontalError*horizontalError+(agent.yPos - targetY)*(agent.yPos - targetY)) / targetRadius * 500;
     }
 
     // FUEL CONSERVATION - bonus for not wasting fuel
@@ -472,14 +492,28 @@ function CalculateScore(agent, targetX, groundY, targetRadius, generationLength,
 
 function Hash2D(x, y, seed)
 {
-    let h =
-        x * 374761393 +
-        y * 668265263 +
-        seed * 1446648777;
+    let h = (x | 0) ^ (y | 0) ^ seed;
 
-    h = (h ^ (h >> 13)) * 1274126177;
+    h = Math.imul(h, 374761393);
+    h ^= h >>> 13;
 
-    return ((h ^ (h >> 16)) >>> 0) / 4294967295;
+    h = Math.imul(h, 1274126177);
+    h ^= h >>> 16;
+
+    return (h >>> 0) / 4294967295;
+}
+
+function Hash(x, seed)
+{
+    let h = x ^ seed;
+
+    h = Math.imul(h, 0x85ebca6b);
+    h ^= h >>> 13;
+
+    h = Math.imul(h, 0xc2b2ae35);
+    h ^= h >>> 16;
+
+    return (h >>> 0) / 4294967295;
 }
 
 function Smooth(t)
@@ -543,6 +577,43 @@ function FractalNoise2D(x, y, seed)
     return value / totalAmplitude;
 }
 
+function Noise1D(x, seed)
+{
+    const x0 = Math.floor(x);
+    const x1 = x0 + 1;
+
+    const t = x - x0;
+
+    const v0 = Hash(x0, seed);
+    const v1 = Hash(x1, seed);
+
+    const smoothT = Smooth(t)
+
+    return lerp(v0, v1, smoothT);
+}
+
+function FractalNoise1D(x, seed)
+{
+    let total = 0;
+    let amplitude = 1;
+    let frequency = 1;
+    let norm = 0;
+
+    for(let i = 0; i < 5; i++)
+    {
+        total +=
+            Noise1D(x * frequency, seed + i * 1000)
+            * amplitude;
+
+        norm += amplitude;
+
+        amplitude *= 0.5;
+        frequency *= 2;
+    }
+
+    return total / norm;
+}
+
 function Amplify(input)
 {
     let value = Math.abs(input);
@@ -550,4 +621,171 @@ function Amplify(input)
     value *= value;
     value = 1 - value;
     return value * Math.sign(input);
+}
+
+function GetGroundHeight(x, y, generationSeed, targetX, targetRadius, curriculumStage)
+{
+    if(Math.abs(x - targetX) <= targetRadius)
+    {
+        return (
+            FractalNoise1D(targetX * CurriculumBlend([0, 0.01, 0.02, 0.04], curriculumStage) /2, generationSeed) * CurriculumBlend([0,25,50,100,250], curriculumStage) / 5
+            + y
+        );
+    }else{
+        return (
+            FractalNoise1D(x * CurriculumBlend([0, 0.01, 0.02, 0.04], curriculumStage) /2, generationSeed) * CurriculumBlend([0,25,50,100,250], curriculumStage) / 5
+            + y
+        );
+    }
+    
+}
+
+function generateObstacles(amount, density, seed) {
+    const obstacles = [];
+
+    for (let i = 0; i < amount; i++) {
+
+        // stable per-obstacle random basis
+        const sx = Hash(i * 4 + 0, seed);
+        const sy = Hash(i * 4 + 1, seed);
+        const sw = Hash(i * 4 + 2, seed);
+        const sh = Hash(i * 4 + 3, seed);
+
+        //console.log(sx);
+
+        const x = sx * 160;  
+        const y = (sy * 120) - 120;
+
+        // density controls how “chunky” things are
+        const w = (0.2 + sw * 1.5) * density;
+        const h = (0.2 + sh * 2.0) * density;
+
+        obstacles.push({ x, y, w, h });
+    }
+
+    return obstacles;
+}
+
+function CollideAnything(
+    x, y,
+    obstacles,
+    groundY,
+    generationSeed,
+    targetX,
+    targetRadius,
+    curriculumStage
+)
+{
+    // -----------------------
+    // TERRAIN
+    // -----------------------
+    const terrainY = GetGroundHeight(
+        x,
+        groundY,
+        generationSeed,
+        targetX,
+        targetRadius,
+        curriculumStage
+    );
+
+    if (y <= terrainY)
+        return true;
+
+    // -----------------------
+    // OBSTACLES
+    // -----------------------
+    for (let i = 0; i < obstacles.length; i++)
+    {
+        const o = obstacles[i];
+
+        if (
+            x >= o.x &&
+            x <= o.x + o.w &&
+            y >= o.y &&
+            y <= o.y + o.h
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function PointInObstacles(x, y, obstacles)
+{
+    for (let i = 0; i < obstacles.length; i++)
+    {
+        const o = obstacles[i];
+
+        if (
+            x >= o.x &&
+            x <= o.x + o.w &&
+            y >= o.y &&
+            y <= o.y + o.h
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function PointInObstaclesExpanded(x, y, obstacles, padding = 2)
+{
+    for (let i = 0; i < obstacles.length; i++)
+    {
+        const o = obstacles[i];
+
+        if (
+            x >= o.x - padding &&
+            x <= o.x + o.w + padding &&
+            y >= o.y - padding &&
+            y <= o.y + o.h + padding
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function RaycastStep(
+    x, y,
+    angle,
+    maxDist,
+    obstacles,
+    groundY,
+    generationSeed,
+    targetX,
+    targetRadius,
+    curriculumStage
+)
+{
+    let dist = 0;
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+
+    while (dist < maxDist)
+    {
+        const sx = x + dx * dist;
+        const sy = y + dy * dist;
+
+        if (CollideAnything(
+            sx, sy,
+            obstacles,
+            groundY,
+            generationSeed,
+            targetX,
+            targetRadius,
+            curriculumStage
+        ))
+        {
+            return dist / maxDist;
+        }
+
+        stepSize = lerp(0.25, 2.0, dist / maxDist);
+        dist += stepSize;
+    }
+
+    return 1;
 }

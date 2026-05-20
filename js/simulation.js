@@ -24,7 +24,7 @@ function Iterate(dt, step = false)
         {   
             for(let i = 0; i < agents.length; i++)
             {
-                scores[i] = CalculateScore(agents[i], targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity);
+                scores[i] = CalculateScore(agents[i], targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed);
             }
             //SetNextGen();
             return true;
@@ -42,13 +42,11 @@ function SetNextGen(initialize = false)
 
     curriculumStage = generation / 300;
 
-    targetX = 80;
-    targetX += (Math.random() - 0.5) * CurriculumBlend([0,15,40,80]);
-
     memoryHistory.length = 0;
     outputHistory.length = 0;
     positionHistory.length = 0;
     trajectory.length = 0;
+    trajectoryValue.length = 0;
     linearMHistory.length = 0;
     angularMHistory.length = 0;
     instabilityHistory.length = 0;
@@ -66,9 +64,47 @@ function SetNextGen(initialize = false)
     time = 0;
     substepTime = 0;
     generation++;
+
+    // GET GENERATION SEED
+
+    let attempts = 0;
+
+    const spawnX = agents[0].xPos;
+    const spawnY = agents[0].yPos;
+
+    obsAmount = Math.floor(CurriculumBlend([0,5,10,15], curriculumStage) / 2);
+    obsDensity = CurriculumBlend([0,10,15,20], curriculumStage);
+
+    do
+    {
+        generationSeed = Math.floor((Math.random() - 0.5) * 5981257);
+
+        obstacles = generateObstacles(obsAmount, obsDensity, generationSeed);
+
+        targetX = 80 + (Math.random() - 0.5) * CurriculumBlend([0,15,40,80]);
+
+        const targetY = GetGroundHeight(
+            targetX,
+            groundY,
+            generationSeed,
+            targetX,
+            targetRadius,
+            curriculumStage
+        );
+
+        const spawnValid = !PointInObstaclesExpanded(spawnX, spawnY, obstacles, 3);
+        const targetValid = !PointInObstaclesExpanded(targetX, targetY, obstacles, targetRadius);
+
+        attempts++;
+
+        if (spawnValid && targetValid)
+            break;
+
+    } while (attempts < 50);
+
+    // DONE
     
     generationLength = 30;
-    generationSeed = (Math.random() - 0.5) * 10000;
     mutationRate = CurriculumBlend([0.08,0.03,0.01]);
     mutationChance = CurriculumBlend([0.03,0.02,0.01]);
     targetRadius = CurriculumBlend([8,4,1.5]);
@@ -81,6 +117,8 @@ function SetNextGen(initialize = false)
     globalWindMagnitude = Math.random() * CurriculumBlend([0,1,5,15]);
     windForceY = Math.sin(windDirection) * globalWindMagnitude;
     windForceX = Math.cos(windDirection) * globalWindMagnitude;
+
+    obstacles = generateObstacles(obsAmount, obsDensity, generationSeed);
 }
 
 function update(dt) /***************************** UPDATE ******************************/
@@ -91,7 +129,7 @@ function update(dt) /***************************** UPDATE **********************
     RunStep(agents, neuralNetworks, targetX, groundY, targetRadius, dt, time,
                  thrustBurn, windForceX, windForceY, 
                  crashVelocity, curriculumStage,
-                 generationLength, scores, generationSeed, trajectory);
+                 generationLength, scores, generationSeed, trajectory, trajectoryValue, obstacles);
 
     
 }

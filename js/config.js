@@ -20,6 +20,7 @@ const angularMCanv = document.getElementById("angularM-canvas");
 const am_ctx = angularMCanv.getContext("2d");
 let positionHistory = [];
 let trajectory = [];
+let trajectoryValue = [];
 let linearMHistory = [];
 let angularMHistory = [];
 
@@ -57,7 +58,7 @@ var randomPosX = 0;
 var randomPosY = 0;
 
 var targetX = 80;
-var groundY = -120;
+var groundY = -115;
 
 var bestScore = []
 var averageScore = []
@@ -102,6 +103,10 @@ var retrySign = 0;
 var retryFlipCount = 0;
 var lastVerifiedGeneration = 0;
 
+let obstacles = [];
+var obsAmount = 15;
+var obsDensity = 25;
+
 var inputLabels =
     [
         "Relative target x",
@@ -115,7 +120,10 @@ var inputLabels =
         "Angular Vel",
         "Fuel",
         "External Force X",
-        "External Force Y"
+        "External Force Y",
+        "Ray Forward",
+        "Ray Motion",
+        "Ray Down"
     ];
 
 var outputLabels =

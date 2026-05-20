@@ -178,7 +178,7 @@ function BuildAgents() /********************************************** CREATE AG
     {
         agents.push(new Agent(randomPosX, randomPosY, 50, 500, 0.1, 2000, 80));
 
-        var newNetwork = new NeuralNetwork(12, 16, 16, 2, 4, 4);
+        var newNetwork = new NeuralNetwork(15, 16, 16, 2, 4, 4);
 
         for (var node = 0; node < newNetwork.cn1.length; node++) {newNetwork.cn1[node] = Math.random() * 2 - 1;}
         for (var node = 0; node < newNetwork.cn2.length; node++) {newNetwork.cn2[node] = Math.random() * 2 - 1;}
@@ -238,7 +238,7 @@ function SystemLoop(timestamp) { /******************************************* SY
 
         render();
 
-        RenderTrajectory(trajectory, "Red", true);
+        RenderTrajectory(trajectory, "Black", trajectoryValue);
 
         RenderNetwork(neuralNetworks[0], true);
 
@@ -288,7 +288,7 @@ for(let i = 0; i < NUM_WORKERS; i++)
     
     worker.onmessage = function(event)
     {
-        const { scores: workerResult, workerIndex, trajX, trajY } = event.data;
+        const { scores: workerResult, workerIndex, trajX, trajY, trajVal } = event.data;
         const sliceStart = workerIndex * (amountOfAgents / NUM_WORKERS);
         for(let j = 0; j < workerResult.length; j++) {
             workerScores[sliceStart + j] = workerResult[j];
@@ -305,6 +305,10 @@ for(let i = 0; i < NUM_WORKERS; i++)
                     trajY[i]
                 ]);
             }
+
+            //console.log(trajVal);
+
+            trajectoryValue = trajVal;
 
             //console.log(trajectory);
         }
@@ -397,6 +401,7 @@ function startNextGeneration()
             thrustBurn, crashVelocity,
             curriculumStage, generationSeed,
             trajectory,
+            obsAmount, obsDensity,
             networkShape: {
                 inputLen: neuralNetworks[0].inputs.length,
                 hl1Len: neuralNetworks[0].hl1.length,

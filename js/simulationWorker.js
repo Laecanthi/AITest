@@ -9,6 +9,7 @@ onmessage = function(event) {
         workerIndex,
         thrustBurn, crashVelocity,
         curriculumStage, generationSeed,
+        obsAmount, obsDensity,
         networkShape 
     } = event.data;
 
@@ -26,6 +27,9 @@ onmessage = function(event) {
     let time = 0;
 
     let trajectory = [];
+    let trajectoryValue = [];
+
+    let obstacles = generateObstacles(obsAmount, obsDensity, generationSeed)
 
     while(time < generationLength)
     {
@@ -34,7 +38,7 @@ onmessage = function(event) {
         RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
                  thrustBurn, windForceX, windForceY, 
                  crashVelocity, curriculumStage,
-                 generationLength, scores, generationSeed, trajectory);
+                 generationLength, scores, generationSeed, trajectory, trajectoryValue, obstacles);
 
         //console.log(trajectory);
 
@@ -51,17 +55,22 @@ onmessage = function(event) {
 
     for(let i = 0; i < agents.length; i++)
     {
-        scores[i] = CalculateScore(agents[i], targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity);
+        scores[i] = CalculateScore(agents[i], targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed);
     }
 
     const trajX = new Array(trajectory.length);
-    const trajY = new Array(trajectory.length)
+    const trajY = new Array(trajectory.length);
+
+    const trajVal = new Array(trajectoryValue.length);
 
     for(let i = 0; i < trajectory.length; i++)
     {
         trajX[i] = trajectory[i][0];
         trajY[i] = trajectory[i][1];
+        trajVal[i] = trajectoryValue[i];
     }
 
-    postMessage({ scores, workerIndex, trajX, trajY });
+    
+
+    postMessage({ scores, workerIndex, trajX, trajY, trajVal });
 };

@@ -1,57 +1,61 @@
 function render()
 {
-const ctx = m_ctx;
+    const ctx = m_ctx;
 
-ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-if(!showOnlyLeader)
-{
-    ctx.globalAlpha = nonLeaderOpacity;
+    DrawObstacles();
 
-    for (agent of agents)
+    DrawGround();
+
+    if(!showOnlyLeader)
     {
-        DrawAgent(agent);
+        ctx.globalAlpha = nonLeaderOpacity;
+
+        for (agent of agents)
+        {
+            DrawAgent(agent);
+        }
+
+        ctx.globalAlpha = 1;
+    }        
+
+    let bestIndex = 0;
+
+    for(let i = 1; i < scores.length; i++)
+    {
+        if(scores[i] < scores[bestIndex])
+        {
+            bestIndex = i;
+        }
     }
 
-    ctx.globalAlpha = 1;
-}        
+    DrawAgent(agents[bestIndex]);
 
-let bestIndex = 0;
-
-for(let i = 1; i < scores.length; i++)
-{
-    if(scores[i] < scores[bestIndex])
+    for(var i = 1; i < 10; i++)
     {
-        bestIndex = i;
+        DrawAgent(agents[i], "Blue");
     }
-}
 
-DrawAgent(agents[bestIndex]);
+    DrawAgent(agents[0], "Red");
 
-for(var i = 1; i < 10; i++)
-{
-    DrawAgent(agents[i], "Blue");
-}
+    /*for(var i = 0; i < targets.length; i++)
+    {
+        DrawTarget(targets[i].X, targets[i].Y, i);
+    }*/
 
-DrawAgent(agents[0], "Red");
+    DrawTarget(targetX, GetGroundHeight(targetX, groundY, generationSeed, targetX, targetRadius, curriculumStage), "Landing pad");
 
-/*for(var i = 0; i < targets.length; i++)
-{
-    DrawTarget(targets[i].X, targets[i].Y, i);
-}*/
+    ctx.strokeStyle = "Blue";
+    ctx.beginPath();
+    ctx.moveTo(155 * pixelsPerMeter, 5 * pixelsPerMeter);
+    ctx.lineTo((155 + (windForceX + Math.cos(windDirection))) * pixelsPerMeter, (5 - (windForceY + Math.sin(windDirection))) * pixelsPerMeter);
+    ctx.stroke();
 
-DrawTarget(targetX, groundY, "Landing pad");
-
-ctx.strokeStyle = "Blue";
-ctx.beginPath();
-ctx.moveTo(155 * pixelsPerMeter, 5 * pixelsPerMeter);
-ctx.lineTo((155 + (windForceX + Math.cos(windDirection))) * pixelsPerMeter, (5 - (windForceY + Math.sin(windDirection))) * pixelsPerMeter);
-ctx.stroke();
-
-ctx.fillStyle = "Blue";
-ctx.beginPath();
-ctx.arc(155 * pixelsPerMeter, 5 * pixelsPerMeter, pixelsPerMeter / 2, 0, 2 * Math.PI);
-ctx.fill(); // Optional: Fill the circle with color
+    ctx.fillStyle = "Blue";
+    ctx.beginPath();
+    ctx.arc(155 * pixelsPerMeter, 5 * pixelsPerMeter, pixelsPerMeter / 2, 0, 2 * Math.PI);
+    ctx.fill(); // Optional: Fill the circle with color
 
 }
 
@@ -61,9 +65,13 @@ function UnrenderedSnapshot()
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    RenderTrajectory(trajectory, "Red", true);
+    DrawObstacles();
 
-    DrawTarget(targetX, groundY, "Landing pad");
+    DrawGround();
+
+    RenderTrajectory(trajectory, "Black", trajectoryValue);
+
+    DrawTarget(targetX, GetGroundHeight(targetX, groundY, generationSeed, targetX, targetRadius, curriculumStage), "Landing pad");
 
     ctx.strokeStyle = "Blue";
     ctx.beginPath();
@@ -130,7 +138,11 @@ ctx.fill();
 ctx.strokeStyle = "Red";
 ctx.beginPath();
 ctx.arc(x * pixelsPerMeter, -y * pixelsPerMeter, targetRadius * pixelsPerMeter, degreesToRadians(-15), degreesToRadians(15));
+ctx.stroke();
+ctx.beginPath();
 ctx.arc(x * pixelsPerMeter, -y * pixelsPerMeter, targetRadius * pixelsPerMeter, degreesToRadians(180-15), degreesToRadians(180+15));
+ctx.stroke();
+ctx.beginPath();
 ctx.moveTo((x-targetRadius) * pixelsPerMeter, -y * pixelsPerMeter);
 ctx.lineTo((x+targetRadius) * pixelsPerMeter, -y * pixelsPerMeter);
 ctx.stroke();
@@ -937,13 +949,15 @@ function RenderInfoGraphs()
     );
 }
 
-function RenderTrajectory(positions, color = "Black", gradient = false)
+function RenderTrajectory(positions, color = "Black", values = [])
 {
         const ctx = m_ctx;
+        const last = positions[positions.length - 1];
 
-        if(!gradient)
+        if(values.length == 0)
         {
             ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
             ctx.beginPath();
 
             for(let i = 0; i < positions.length; i++)
@@ -962,12 +976,35 @@ function RenderTrajectory(positions, color = "Black", gradient = false)
             }
 
             ctx.stroke();
+
+            if(!renderSimulation)
+            {
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(
+                    last[0] * pixelsPerMeter,
+                    -last[1] * pixelsPerMeter,
+                    4,
+                    0,
+                    Math.PI * 2
+                    );
+                ctx.fill();
+            }
         }else{
+
+            let dist = 0;
             
             for(let i = 1; i < positions.length; i++)
             {
-                const hue =(i / positions.length) * 300;
-                ctx.strokeStyle = `hsl(${hue},50%,40%)`;
+                const dx = positions[i][0] - positions[i-1][0];
+                const dy = positions[i][1] - positions[i-1][1];
+
+                dist += Math.sqrt(dx*dx + dy*dy);
+
+                const hue = (dist * 10) % 300;
+                const val = (Math.floor(i / 60 / simSubsteps) % 2) * 30 + 20;
+                ctx.strokeStyle = `hsl(${hue},${val * 2}%,${val}%)`;
+                ctx.lineWidth = values[i] + 1;
 
                 const x = positions[i][0] * pixelsPerMeter;
                 const y = positions[i][1] * pixelsPerMeter;
@@ -978,10 +1015,93 @@ function RenderTrajectory(positions, color = "Black", gradient = false)
                 ctx.stroke();
             }
 
-            
+            if(!renderSimulation)
+            {
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(
+                    last[0] * pixelsPerMeter,
+                    -last[1] * pixelsPerMeter,
+                    values[values.length - 1] * 2,
+                    0,
+                    Math.PI * 2
+                    );
+                ctx.fill();
+            }
         }
+
+        const first = positions[0];
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(first[0] * pixelsPerMeter - 5,-first[1] * pixelsPerMeter - 5);
+        ctx.lineTo(first[0] * pixelsPerMeter + 5,-first[1] * pixelsPerMeter + 5); 
+        ctx.moveTo(first[0] * pixelsPerMeter + 5,-first[1] * pixelsPerMeter - 5);
+        ctx.lineTo(first[0] * pixelsPerMeter - 5,-first[1] * pixelsPerMeter + 5); 
+        ctx.stroke();
+
+        
 
         //console.log(positions);
         //console.log("Trajectory Rendered!");
         
+}
+
+function DrawGround()
+{
+    const ctx = m_ctx;
+
+    ctx.fillStyle = "green";
+    ctx.beginPath();
+
+    for(let x = 0; x < 800 / pixelsPerMeter; x++)
+    {
+        const y = GetGroundHeight(x, groundY, generationSeed, targetX, targetRadius, curriculumStage);
+
+        if(x === 0)
+        {
+            ctx.moveTo(x * pixelsPerMeter, -y * pixelsPerMeter);
+        }
+        else
+        {
+            ctx.lineTo(x * pixelsPerMeter, -y * pixelsPerMeter);
+        }
+    }
+
+    ctx.lineTo(800, 1000);
+    ctx.lineTo(0, 1000);
+    ctx.closePath();
+    ctx.fill();
+
+    const targetY = -GetGroundHeight(targetX, groundY, generationSeed, targetX, targetRadius, curriculumStage) * pixelsPerMeter;
+
+    ctx.fillStyle = "grey";
+    ctx.beginPath();
+    ctx.moveTo((targetX-targetRadius) * pixelsPerMeter, targetY);
+    ctx.lineTo((targetX+targetRadius) * pixelsPerMeter, targetY);
+    ctx.lineTo((targetX+targetRadius) * pixelsPerMeter, targetY + (2 * pixelsPerMeter));
+    ctx.lineTo((targetX-targetRadius) * pixelsPerMeter, targetY + (2 * pixelsPerMeter));
+    ctx.closePath();
+    ctx.fill();
+}
+
+function DrawObstacles()
+{
+    const ctx = m_ctx;
+
+    ctx.fillStyle = "grey";
+    ctx.beginPath();
+
+    for(let obs of obstacles)
+    {
+        const x = obs.x * pixelsPerMeter;
+        const y = -obs.y * pixelsPerMeter;
+        const w = obs.w * pixelsPerMeter;
+        const h = -obs.h * pixelsPerMeter;
+
+        ctx.fillRect(x, y, w, h);
+    }
+
+    ctx.fill();
 }
