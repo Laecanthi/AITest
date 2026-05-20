@@ -72,16 +72,16 @@ function SetNextGen(initialize = false)
     const spawnX = agents[0].xPos;
     const spawnY = agents[0].yPos;
 
-    obsAmount = Math.floor(CurriculumBlend([0,5,10,15], curriculumStage) / 2);
-    obsDensity = CurriculumBlend([0,10,15,20], curriculumStage);
+    obsAmount = Math.floor(CurriculumBlend([0,0,5,10,15], curriculumStage) / 2);
+    obsDensity = CurriculumBlend([0,0,5,10,15], curriculumStage);
 
     do
     {
         generationSeed = Math.floor((Math.random() - 0.5) * 5981257);
 
-        obstacles = generateObstacles(obsAmount, obsDensity, generationSeed);
+        obstacles = generateObstacles(obsAmount, obsDensity, generationSeed, curriculumStage);
 
-        targetX = 80 + (Math.random() - 0.5) * CurriculumBlend([0,15,40,80]);
+        targetX = 80 + (Hash(142, generationSeed) - 0.5) * CurriculumBlend([0,15,40,80], curriculumStage);
 
         const targetY = GetGroundHeight(
             targetX,
@@ -92,7 +92,8 @@ function SetNextGen(initialize = false)
             curriculumStage
         );
 
-        const spawnValid = !PointInObstaclesExpanded(spawnX, spawnY, obstacles, 3);
+        const spawnValid = !PointInObstaclesExpanded(spawnX, spawnY, obstacles, 3)
+            && (spawnY + 3 > GetGroundHeight(spawnX, groundY, generationSeed, targetX, targetRadius, curriculumStage));
         const targetValid = !PointInObstaclesExpanded(targetX, targetY, obstacles, targetRadius);
 
         attempts++;
@@ -107,18 +108,18 @@ function SetNextGen(initialize = false)
     generationLength = 30;
     mutationRate = CurriculumBlend([0.08,0.03,0.01]);
     mutationChance = CurriculumBlend([0.03,0.02,0.01]);
-    targetRadius = CurriculumBlend([8,4,1.5]);
-    maxThrustDuration = CurriculumBlend([100,30,15,5]);
+    targetRadius = CurriculumBlend([8,4,3,2,1.5]);
+    maxThrustDuration = CurriculumBlend([100,30,15,10]);
     thrustBurn = CurriculumBlend([0, 500 / maxThrustDuration]);
-    crashVelocity = CurriculumBlend([10, 5, 1, 0.5]);
+    crashVelocity = CurriculumBlend([6, 4, 2.5, 1.5, 0.5]);
 
 
     windDirection = Math.random() * Math.PI * 2;
-    globalWindMagnitude = Math.random() * CurriculumBlend([0,1,5,15]);
+    globalWindMagnitude = Math.random() * CurriculumBlend([0,1,2.5,5,15]);
     windForceY = Math.sin(windDirection) * globalWindMagnitude;
     windForceX = Math.cos(windDirection) * globalWindMagnitude;
 
-    obstacles = generateObstacles(obsAmount, obsDensity, generationSeed);
+    //obstacles = generateObstacles(obsAmount, obsDensity, generationSeed, curriculumStage);
 }
 
 function update(dt) /***************************** UPDATE ******************************/

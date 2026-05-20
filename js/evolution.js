@@ -41,7 +41,7 @@ function MutateNextGen() /**************************************** NEXT GENERATI
         var deltaScore = (combinedScore - smoothedPreviousScore) / smoothedPreviousScore;
     } 
 
-    if(Math.abs(deltaScore) > 0.5)
+    if(Math.abs(deltaScore) > 1) // if delta score is greater than 100%
     {
         deltaScore *= 100;
 

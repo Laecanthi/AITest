@@ -29,7 +29,7 @@ onmessage = function(event) {
     let trajectory = [];
     let trajectoryValue = [];
 
-    let obstacles = generateObstacles(obsAmount, obsDensity, generationSeed)
+    let obstacles = generateObstacles(obsAmount, obsDensity, generationSeed, curriculumStage)
 
     while(time < generationLength)
     {

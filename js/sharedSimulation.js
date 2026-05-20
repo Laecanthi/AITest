@@ -174,9 +174,9 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius, dt,
         }
 
         const memoryResponseRates = [
-            8.0,   // very fast
             2.0,   // medium
             0.5,   // slow
+            8.0,   // very fast
             0.1    // very slow
         ];
 
@@ -628,20 +628,22 @@ function GetGroundHeight(x, y, generationSeed, targetX, targetRadius, curriculum
     if(Math.abs(x - targetX) <= targetRadius)
     {
         return (
-            FractalNoise1D(targetX * CurriculumBlend([0, 0.01, 0.02, 0.04], curriculumStage) /2, generationSeed) * CurriculumBlend([0,25,50,100,250], curriculumStage) / 5
+            FractalNoise1D(targetX * CurriculumBlend([0, 0, 0.01, 0.02, 0.04], curriculumStage) /2, generationSeed) * CurriculumBlend([0,25,50,100,250], curriculumStage) / 10
             + y
         );
     }else{
         return (
-            FractalNoise1D(x * CurriculumBlend([0, 0.01, 0.02, 0.04], curriculumStage) /2, generationSeed) * CurriculumBlend([0,25,50,100,250], curriculumStage) / 5
+            FractalNoise1D(x * CurriculumBlend([0, 0, 0.01, 0.02, 0.04], curriculumStage) /2, generationSeed) * CurriculumBlend([0,25,50,100,250], curriculumStage) / 10
             + y
         );
     }
     
 }
 
-function generateObstacles(amount, density, seed) {
+function generateObstacles(amount, density, seed, curriculumStage) {
     const obstacles = [];
+
+    if(curriculumStage > 1) obstacles.push({x: 75 + (Hash(142, seed) - 0.5) * CurriculumBlend([0,15,40,80], curriculumStage), y: -90, w: 10, h: 2.5})
 
     for (let i = 0; i < amount; i++) {
 
