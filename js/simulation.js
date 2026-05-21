@@ -48,11 +48,11 @@ function SetNextGen(initialize = false)
     {
         passRate += grades[i];
     }
-    passRate /= grades.length * 4;
+    passRate /= grades.length * 2; // although the max is 4, remember, 2 is pasing, 4 is exceeding!
 
     curriculumStage += Math.max(0,
-        passRate - 0.5
-    )
+        (passRate - 0.5) / 2
+    ); // for every % passing over 50%, curriculumStage increases by 0.5
 
     memoryHistory.length = 0;
     outputHistory.length = 0;

@@ -253,7 +253,7 @@ function SystemLoop(timestamp) { /******************************************* SY
         }else{
             ctx.fillText(generation + ": " + time.toFixed(2), 10, 30);
         }
-        m_ctx.fillText(curriculumStage + " - " + (passRate*100).toFixed(1) + "%", 10, 60);
+        m_ctx.fillText(curriculumStage.toFixed(2) + " - " + (passRate*100).toFixed(1) + "%", 10, 60);
 
         //generationText.textContent = "";
 
@@ -345,7 +345,7 @@ for(let i = 0; i < NUM_WORKERS; i++)
             }else{
                 m_ctx.fillText(generation, 10, 30);
             }
-            m_ctx.fillText(curriculumStage + " - " + (passRate*100).toFixed(1) + "%", 10, 60);
+            m_ctx.fillText(curriculumStage.toFixed(2) + " - " + (passRate*100).toFixed(1) + "%", 10, 60);
 
             DoNextGeneration();
             
