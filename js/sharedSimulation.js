@@ -488,6 +488,55 @@ function CalculateScore(agent, targetX, groundY, targetRadius, generationLength,
     return score;
 }
 
+function CalculateGrade(agent, targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed)
+{
+    // agent never landed, automatic failure
+    if(agent.alive)
+    {
+        return 0;
+    }
+
+    // grade 2 is minimum to pass, grade 4 is perfect performance, grade 0 is the lowest score
+    // notice how this is nearly identicle to score, but not quite
+    // score is for evolution, where grade is pass/fail
+    // each criteria is a "pass" or "fail", giving 1 point each
+    // grade 2 is expected, extra criteria is purposefully harsh
+
+    let grade = 0;
+    const targetY = GetGroundHeight(targetX, groundY, generationSeed, targetX, targetRadius, curriculumStage);
+
+    const verticalSpeed = Math.abs(agent.yVel);
+    const horizontalSpeed = Math.abs(agent.xVel);
+    const angularSpeed = Math.abs(agent.aVel);
+
+    const horizontalError = Math.abs(agent.xPos - targetX);
+    const verticalError = Math.abs(agent.yPos - targetY);
+    const angleError = Math.abs(
+        ((agent.angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI / 2
+    );
+    const dist = Math.sqrt(horizontalError*horizontalError+verticalError*verticalError);
+
+    // MINIMUM - expected criteria with increasing difficulty
+
+    // WITHIN TARGET
+    if(dist<=targetRadius) grade++;
+
+    // SOFT LANDING
+    if(verticalSpeed<crashVelocity) grade++;
+
+    if(grade == 0) return 0; // if an agent fails both minimum criteria, in cannot earn excess criteria
+
+    // EXCESS - static criteria with high precision
+    
+    // ORIENTATION
+    if(angleError<degreesToRadians(1.5)) grade++; // max error of 1.5 degrees from upright
+
+    // LOW HORIZONTAL MOTION
+    if(horizontalSpeed<1.5) grade++; // max speed of 1.5 m/s
+
+    return grade;
+}
+
 //******************************* PERLIN NOISE ******************************************************/
 
 function Hash2D(x, y, seed)
@@ -640,10 +689,17 @@ function GetGroundHeight(x, y, generationSeed, targetX, targetRadius, curriculum
     
 }
 
-function generateObstacles(amount, density, seed, curriculumStage) {
+function generateObstacles(amount, density, seed, curriculumStage, targetX, targetY) {
     const obstacles = [];
 
-    if(curriculumStage > 1) obstacles.push({x: 75 + (Hash(142, seed) - 0.5) * CurriculumBlend([0,15,40,80], curriculumStage), y: -90, w: 10, h: 2.5})
+    if(curriculumStage >= 1) obstacles.push({x: targetX - 5, y: targetY + 15, w: 10, h: 2.5}); // starting at curriculum stage 1, agents now have to go around an obstacle
+
+    if(curriculumStage >= 1.5) // starting halfway through curriculum stage 1, agents can no longer hug the ground and thus must actually learn to avoid obstacles
+    {
+        obstacles.push({x: targetX + 7.5, y: targetY - 5, w: 2.5, h: 7.5});
+        obstacles.push({x: targetX - 10, y: targetY - 5, w: 2.5, h: 7.5});
+    }
+    
 
     for (let i = 0; i < amount; i++) {
 

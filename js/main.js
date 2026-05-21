@@ -195,7 +195,7 @@ function BuildAgents() /********************************************** CREATE AG
         neuralNetworks.push(newNetwork);
 
         scores.push(0);
-        
+        grades.push(0);
         
     }
 }
@@ -253,6 +253,7 @@ function SystemLoop(timestamp) { /******************************************* SY
         }else{
             ctx.fillText(generation + ": " + time.toFixed(2), 10, 30);
         }
+        m_ctx.fillText(curriculumStage + " - " + (passRate*100).toFixed(1) + "%", 10, 60);
 
         //generationText.textContent = "";
 
@@ -281,6 +282,7 @@ const NUM_WORKERS = 4;
 const workers = [];
 let workersFinished = 0;
 let workerScores = new Array(amountOfAgents).fill(0);
+let workerGrades  = new Array(amountOfAgents).fill(0);
 
 for(let i = 0; i < NUM_WORKERS; i++)
 {
@@ -288,10 +290,11 @@ for(let i = 0; i < NUM_WORKERS; i++)
     
     worker.onmessage = function(event)
     {
-        const { scores: workerResult, workerIndex, trajX, trajY, trajVal } = event.data;
+        const { scores: workerResult, grades: resultingGrades, workerIndex, trajX, trajY, trajVal } = event.data;
         const sliceStart = workerIndex * (amountOfAgents / NUM_WORKERS);
         for(let j = 0; j < workerResult.length; j++) {
             workerScores[sliceStart + j] = workerResult[j];
+            workerGrades[sliceStart + j] = resultingGrades[j];
         }
 
         //console.log(trajX, trajY);
@@ -322,6 +325,7 @@ for(let i = 0; i < NUM_WORKERS; i++)
             workersFinished = 0;
             for(let j = 0; j < amountOfAgents; j++) {
                 scores[j] = workerScores[j];
+                grades[j] = workerGrades[j];
             }
             
             //console.log(scores[0], scores[1], scores[2]);
@@ -341,6 +345,7 @@ for(let i = 0; i < NUM_WORKERS; i++)
             }else{
                 m_ctx.fillText(generation, 10, 30);
             }
+            m_ctx.fillText(curriculumStage + " - " + (passRate*100).toFixed(1) + "%", 10, 60);
 
             DoNextGeneration();
             

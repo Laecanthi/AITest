@@ -25,6 +25,7 @@ function Iterate(dt, step = false)
             for(let i = 0; i < agents.length; i++)
             {
                 scores[i] = CalculateScore(agents[i], targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed);
+                grades[i] = CalculateGrade(agents[i], targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed);
             }
             //SetNextGen();
             return true;
@@ -40,7 +41,18 @@ function SetNextGen(initialize = false)
 {
     
 
-    curriculumStage = generation / 300;
+    //curriculumStage = generation / 300;
+
+    passRate = 0;
+    for(let i = 0; i < grades.length; i++)
+    {
+        passRate += grades[i];
+    }
+    passRate /= grades.length * 4;
+
+    curriculumStage += Math.max(0,
+        passRate - 0.5
+    )
 
     memoryHistory.length = 0;
     outputHistory.length = 0;
@@ -79,7 +91,7 @@ function SetNextGen(initialize = false)
     {
         generationSeed = Math.floor((Math.random() - 0.5) * 5981257);
 
-        obstacles = generateObstacles(obsAmount, obsDensity, generationSeed, curriculumStage);
+        
 
         targetX = 80 + (Hash(142, generationSeed) - 0.5) * CurriculumBlend([0,15,40,80], curriculumStage);
 
@@ -91,6 +103,8 @@ function SetNextGen(initialize = false)
             targetRadius,
             curriculumStage
         );
+
+        obstacles = generateObstacles(obsAmount, obsDensity, generationSeed, curriculumStage, targetX, targetY);
 
         const spawnValid = !PointInObstaclesExpanded(spawnX, spawnY, obstacles, 3)
             && (spawnY + 3 > GetGroundHeight(spawnX, groundY, generationSeed, targetX, targetRadius, curriculumStage));
@@ -118,8 +132,6 @@ function SetNextGen(initialize = false)
     globalWindMagnitude = Math.random() * CurriculumBlend([0,1,2.5,5,15]);
     windForceY = Math.sin(windDirection) * globalWindMagnitude;
     windForceX = Math.cos(windDirection) * globalWindMagnitude;
-
-    //obstacles = generateObstacles(obsAmount, obsDensity, generationSeed, curriculumStage);
 }
 
 function update(dt) /***************************** UPDATE ******************************/

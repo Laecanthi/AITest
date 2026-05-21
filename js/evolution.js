@@ -8,7 +8,7 @@ function MutateNextGen() /**************************************** NEXT GENERATI
     }
 
     population = neuralNetworks.map((network, index) => {
-    return { network: network, score: scores[index] };
+    return { network: network, score: scores[index] - (grades[index] * 1000), rawScore: scores[index], grade: grades[index] }; // agents are given an addition 1000 reward for its grade
     });
 
     population.sort((a, b) => a.score - b.score);
@@ -116,6 +116,19 @@ function MutateNextGen() /**************************************** NEXT GENERATI
                 "Active:", activeCutoff.toFixed(1),
                 "Survivors:", survivors.length);
 
+    let maxGradeAgents = [];
+
+    for(let i = 0; i < survivors.length; i++)
+    {
+        if(survivors[i].grade == 4)
+        {
+            maxGradeAgents.push(survivors[i]);
+        }
+    }
+
+    console.log("Max Grade Agents: " + maxGradeAgents.length);
+
+    survivors.push(...maxGradeAgents);
 
     while (nextGeneration.length < amountOfAgents)
     {

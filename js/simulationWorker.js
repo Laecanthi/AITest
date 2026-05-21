@@ -1,4 +1,5 @@
 importScripts('sharedSimulation.js');
+importScripts('utils.js');
 
 onmessage = function(event) {
     const {
@@ -24,12 +25,22 @@ onmessage = function(event) {
     }
 
     const scores = new Array(agents.length).fill(0);
+    const grades = new Array(agents.length).fill(0);
     let time = 0;
 
     let trajectory = [];
     let trajectoryValue = [];
 
-    let obstacles = generateObstacles(obsAmount, obsDensity, generationSeed, curriculumStage)
+    const targetY = GetGroundHeight(
+            targetX,
+            groundY,
+            generationSeed,
+            targetX,
+            targetRadius,
+            curriculumStage
+        );
+
+    let obstacles = generateObstacles(obsAmount, obsDensity, generationSeed, curriculumStage, targetX, targetY)
 
     while(time < generationLength)
     {
@@ -56,6 +67,7 @@ onmessage = function(event) {
     for(let i = 0; i < agents.length; i++)
     {
         scores[i] = CalculateScore(agents[i], targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed);
+        grades[i] = CalculateGrade(agents[i], targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed);
     }
 
     const trajX = new Array(trajectory.length);
@@ -72,5 +84,5 @@ onmessage = function(event) {
 
     
 
-    postMessage({ scores, workerIndex, trajX, trajY, trajVal });
+    postMessage({ scores, grades, workerIndex, trajX, trajY, trajVal });
 };

@@ -129,6 +129,7 @@ function ResetAgents()
 
     agents.length = 0;
     scores.length = 0;
+    grades.length = 0;
 
     for(var i = 0; i < amountOfAgents; i++)
     {
@@ -140,5 +141,6 @@ function ResetAgents()
 
         agents.push(newAgent);
         scores.push(0);
+        grades.push(0);
     }
 }

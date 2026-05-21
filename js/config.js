@@ -49,7 +49,9 @@ const pixelsPerMeter = 5;
 var agents = [];
 var neuralNetworks = [];
 var scores = [];
+var grades = [];
 const amountOfAgents = 300;
+var passRate = 0;
 
 var time = 0;
 var substepTime = 0;
