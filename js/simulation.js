@@ -54,6 +54,17 @@ function SetNextGen(initialize = false)
         (passRate - 0.5) / 2
     ); // for every % passing over 50%, curriculumStage increases by 0.5
 
+    capTimer--;
+
+    if(passRate >= 0.85 && capTimer <= 0)
+    {
+        curriculumCap++; // with a pass rate over 85%, the curriculum cap increases
+        capTimer = 50;
+        console.warn("Cap has increased to " + curriculumCap);
+    }
+
+    curriculumStage = Math.min(curriculumStage, curriculumCap);
+
     memoryHistory.length = 0;
     outputHistory.length = 0;
     positionHistory.length = 0;
@@ -122,6 +133,9 @@ function SetNextGen(initialize = false)
     generationLength = 30;
     mutationRate = CurriculumBlend([0.08,0.03,0.01]);
     mutationChance = CurriculumBlend([0.03,0.02,0.01]);
+    // if the curriculum cap just increased, mutation change temporarily decreases
+    if(capTimer >= 25) mutationChance /= 2;
+    
     targetRadius = CurriculumBlend([8,4,3,2,1.5]);
     maxThrustDuration = CurriculumBlend([100,30,15,10]);
     thrustBurn = CurriculumBlend([0, 500 / maxThrustDuration]);

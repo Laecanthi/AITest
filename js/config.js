@@ -52,6 +52,8 @@ var scores = [];
 var grades = [];
 const amountOfAgents = 300;
 var passRate = 0;
+var curriculumCap = 0.999; //just below zero so that it can't start the next curriculum without increasing the cap
+var capTimer = 50;
 
 var time = 0;
 var substepTime = 0;
