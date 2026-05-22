@@ -43,12 +43,15 @@ function SetNextGen(initialize = false)
 
     //curriculumStage = generation / 300;
 
+    highestPassRateDuringCurriculum = Math.max(passRate, highestPassRateDuringCurriculum); // highest pass rate is defined for the previous generation's pass rate
+
     passRate = 0;
     for(let i = 0; i < grades.length; i++)
     {
         passRate += grades[i];
     }
     passRate /= grades.length * 2; // although the max is 4, remember, 2 is pasing, 4 is exceeding!
+    
 
     curriculumStage += Math.max(0,
         (passRate - 0.5) / 2
@@ -56,9 +59,10 @@ function SetNextGen(initialize = false)
 
     capTimer--;
 
-    if(passRate >= 0.85 && capTimer <= 0)
+    if(passRate >= 0.9 && capTimer <= 0)
     {
-        curriculumCap++; // with a pass rate over 85%, the curriculum cap increases
+        curriculumCap++; // with a pass rate over 90%, the curriculum cap increases
+        highestPassRateDuringCurriculum = 0;
         capTimer = 50;
         console.warn("Cap has increased to " + curriculumCap);
     }

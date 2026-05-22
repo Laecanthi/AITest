@@ -41,13 +41,17 @@ function MutateNextGen() /**************************************** NEXT GENERATI
         var deltaScore = (combinedScore - smoothedPreviousScore) / smoothedPreviousScore;
     } 
 
+    const minimumPassRate = highestPassRateDuringCurriculum / 100 * 15; // %10 of the highest pass rate achieved this curriculum
+    const maxRetries = 4;
+    const maxFlips = 3;
+
     if(Math.abs(deltaScore) > 1) // if delta score is greater than 100%
     {
         deltaScore *= 100;
 
-        if(retrySign == Math.sign(deltaScore) || retryFlipCount >= 2)
+        if(retrySign == Math.sign(deltaScore) || retryFlipCount >= maxFlips)
         {
-            if(retryCount < 3)
+            if(retryCount < maxRetries)
             {
                 console.log("Generation retried for high delta score: " + deltaScore.toFixed(2) + "%");
                 console.info("Attempt: " + retryCount);
@@ -71,6 +75,21 @@ function MutateNextGen() /**************************************** NEXT GENERATI
             console.log("High delta score was ignored");
         }
     }
+    
+    if(passRate < minimumPassRate || passRate > highestPassRateDuringCurriculum + 0.1) // if pass rate is below the minimum allowed pass rate or above the current highest pass rate + 10%
+    {
+        if(retryCount < maxRetries)
+        {
+            console.log("Generation retried for low pass rate: " + (passRate * 100).toFixed(2) + "%");
+            console.info("Attempt: " + retryCount);
+            retryCount++;
+            generation--;
+            return;
+        }else{
+            console.warn("Low pass rate confirmed:" + (passRate * 100).toFixed(2) + "%");
+        }
+    }
+
     retrySign = Math.sign(deltaScore)
     retryCount = 0;
     retryFlipCount = 0;
@@ -111,10 +130,10 @@ function MutateNextGen() /**************************************** NEXT GENERATI
         .slice(0, survivorCount)
         .filter(a => a.score <= activeCutoff);
 
-    console.log("Hard cutoff:", hardCutoff.toFixed(1), 
+    /*console.log("Hard cutoff:", hardCutoff.toFixed(1), 
                 "Soft cutoff:", softCutoff.toFixed(1),
                 "Active:", activeCutoff.toFixed(1),
-                "Survivors:", survivors.length);
+                "Survivors:", survivors.length);*/
 
     let maxGradeAgents = [];
 
@@ -126,7 +145,10 @@ function MutateNextGen() /**************************************** NEXT GENERATI
         }
     }
 
-    console.log("Max Grade Agents: " + maxGradeAgents.length);
+    console.log(
+        "Max Grade Agents: " + maxGradeAgents.length,
+        "Survivors: " + survivors.length
+    );
 
     survivors.push(...maxGradeAgents);
 

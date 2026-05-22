@@ -206,10 +206,30 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius, dt,
 }
 
 
-function UpdateAgent(agent, dt, thrustBurn, windForceX, windForceY, crashVelocity, time, generationSeed)
+function UpdateAgent(agent, dt, thrustBurn, minThrust, windForceX, windForceY, crashVelocity, time, generationSeed)
 {
     //agent.xThrust = clamp(agent.xThrust, -1, 1);
     //agent.yThrust = clamp(agent.yThrust, -1, 1);
+
+    //if(agent.thrust < minThrust) agent.thrust = minThrust;
+
+    /*if(agent.thrust != -1)
+    {
+        agent.thrust = lerp(minThrust,1, agent.thrust);
+    }else{
+        agent.thrust = 0;
+    }*/
+
+    const Rjitter = FractalNoise1D(time * 15, generationSeed + 5); // quite fast and noisy jitter from actuators
+    const Rdrift = Perlin1D(time / 30, generationSeed + 15); // very slow noise that drifts through the entire generation
+    const RactuatorNoise = Rjitter * 0.03 + Rdrift * 0.09;
+
+    const Tjitter = FractalNoise1D(time * 15, generationSeed + 7); // quite fast and noisy jitter from actuators
+    const Tdrift = Perlin1D(time / 30, generationSeed + 13); // very slow noise that drifts through the entire generation
+    const TactuatorNoise = Tjitter * 0.04 + Tdrift * 0.08;
+
+    const TMnoise = FractalNoise1D(time * 10, generationSeed + 4) * 0.04; // extra noise that is multiplecative
+    const TDnoise = FractalNoise1D(time * 5, generationSeed + 21) * 0.12; // the noise applied to deep thrusting
 
     agent.thrust = clamp(agent.thrust, 0, 1);
     agent.rotation = clamp(agent.rotation, -1, 1);
@@ -225,6 +245,28 @@ function UpdateAgent(agent, dt, thrustBurn, windForceX, windForceY, crashVelocit
     }
 
     agent.mass = agent.dryMass + agent.fuel * agent.fuelMass;
+
+    let actualThrust = agent.thrust;
+    let actualRotation = agent.rotation;
+
+    if(actualThrust != 0) // if thrust is actually being applied
+    {
+        const normalizedThrottle =
+            (actualThrust - minThrust) / (1 - minThrust);
+
+        const instability =
+            1 - normalizedThrottle;
+
+        actualThrust *= 1 + (TMnoise + (TDnoise * instability));
+        actualThrust += TactuatorNoise;
+    }
+
+    if(actualRotation != 0) // if rotation is actually being applied
+    {
+        actualRotation += RactuatorNoise;
+    }
+
+    actualThrust = Math.max(actualThrust, 0); // thrust cannot be negative
 
     //console.log(agent);
 
@@ -250,8 +292,8 @@ function UpdateAgent(agent, dt, thrustBurn, windForceX, windForceY, crashVelocit
     agent.xLastExternalForce = xExternalForce;
     agent.yLastExternalForce = yExternalForce;
 
-    agent.xAcc = agent.thrust * Math.cos(agent.angle) * agent.fThrust;
-    agent.yAcc = agent.thrust * Math.sin(agent.angle) * agent.fThrust;
+    agent.xAcc = actualThrust * Math.cos(agent.angle) * agent.fThrust;
+    agent.yAcc = actualThrust * Math.sin(agent.angle) * agent.fThrust;
 
     agent.xAcc += xExternalForce;
     agent.yAcc += yExternalForce;
@@ -259,7 +301,7 @@ function UpdateAgent(agent, dt, thrustBurn, windForceX, windForceY, crashVelocit
     agent.xAcc /= agent.mass;
     agent.yAcc /= agent.mass;
 
-    agent.aAcc = agent.rotation * agent.torque / agent.mass;
+    agent.aAcc = actualRotation * agent.torque / agent.mass;
 
     agent.yAcc -= 9.8;
 
@@ -306,13 +348,27 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
         UpdateNeuralNetwork(networks[i], agents[i],
                            targetX, groundY, targetRadius, dt, generationSeed, curriculumStage, obstacles);
 
-        const targetRotation = networks[i].outputs[0];
-        const targetThrust = networks[i].outputs[1] / 2 + 0.5;
+        const minThrust = 0.4;
+        const deadzone = 0.02;
 
-        agents[i].rotation = lerp(agents[i].rotation, targetRotation, 0.15);
-        agents[i].thrust = lerp(agents[i].thrust, targetThrust, 0.15);
+        let targetRotation = networks[i].outputs[0];
+        let targetThrust = networks[i].outputs[1];
+        if(targetThrust < 0)
+        {
+            targetThrust = 0;
+            agents[i].thrust = LinearTargetChange(agents[i].thrust, targetThrust, dt * 3.33);
+        }else{
+            targetThrust = lerp(minThrust, 1, targetThrust);
+            agents[i].thrust = LinearTargetChange(agents[i].thrust, targetThrust, dt * 6.67);
+        }
+        if(Math.abs(targetRotation) <= deadzone)
+        {
+            targetRotation = 0;
+        }
 
-        UpdateAgent(agents[i], dt, thrustBurn, windForceX, windForceY, crashVelocity, time, generationSeed);
+        agents[i].rotation = LinearTargetChange(agents[i].rotation, targetRotation, dt * 8);    
+
+        UpdateAgent(agents[i], dt, thrustBurn, minThrust, windForceX, windForceY, crashVelocity, time, generationSeed);
 
         if (CollideAnything(
                 agents[i].xPos,
@@ -626,7 +682,7 @@ function FractalNoise2D(x, y, seed)
     return value / totalAmplitude;
 }
 
-function Noise1D(x, seed)
+function Perlin1D(x, seed)
 {
     const x0 = Math.floor(x);
     const x1 = x0 + 1;
@@ -651,7 +707,7 @@ function FractalNoise1D(x, seed)
     for(let i = 0; i < 5; i++)
     {
         total +=
-            Noise1D(x * frequency, seed + i * 1000)
+            Perlin1D(x * frequency, seed + i * 1000)
             * amplitude;
 
         norm += amplitude;
@@ -846,4 +902,28 @@ function RaycastStep(
     }
 
     return 1;
+}
+
+function LinearChange(currentValue, min, max, delta)
+{
+    let val = currentValue;
+    val += delta;
+    val = clamp(val, min, max);
+    return val;
+}
+
+function LinearTargetChange(currentValue, target, delta)
+{
+    let val = currentValue;
+    let sign = Math.sign(target - currentValue);
+
+    if(sign === 1)
+    {
+        val = Math.min(val+delta,target);
+
+    }else{
+        val = Math.max(val-delta,target);
+    }
+
+    return val;
 }
