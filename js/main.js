@@ -423,7 +423,7 @@ function startNextGeneration()
                 hl2Len: neuralNetworks[0].hl2.length,
                 outputLen: neuralNetworks[0].outputs.length,
             },
-            flowField: flatFlowField,
+            distanceField,
             fieldWidth, fieldHeight, cellSize,
             fieldOriginX, fieldOriginY
         });

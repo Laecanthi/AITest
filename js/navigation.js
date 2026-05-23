@@ -340,6 +340,370 @@ function SampleFlowField(
     };
 }
 
+/************************************************************* THIS IS THE MAIN FUNCTION ************************************************/
+function CreateDistanceField(
+    width,
+    height,
+    cellSize,
+    targetX,
+    groundY,
+    seed,
+    targetRadius,
+    curriculumStage,
+    obstacles,
+    fieldOriginX,
+    fieldOriginY
+)
+{
+    const collisionGrid = BuildCollisionGrid(
+        width,
+        height,
+        cellSize,
+        targetX,
+        groundY,
+        seed,
+        targetRadius,
+        curriculumStage,
+        obstacles,
+        fieldOriginX,
+        fieldOriginY
+    );
+
+    const targetY = GetGroundHeight(
+        targetX,
+        groundY,
+        seed,
+        targetX,
+        targetRadius,
+        curriculumStage
+    );
+
+    let distanceField = BuildDistanceField(
+        collisionGrid,
+        targetX,
+        targetY,
+        fieldOriginX,
+        fieldOriginY,
+        cellSize
+    );
+
+    return FlattenDistanceField(distanceField);
+}
+
+function BuildDistanceField(
+    collisionGrid,
+    targetX,
+    targetY,
+    originX,
+    originY,
+    cellSize,
+    sweeps = 12
+)
+{
+    const W = collisionGrid.length;
+    const H = collisionGrid[0].length;
+
+    const field = Array.from(
+        { length: W },
+        () => Array(H).fill(Infinity)
+    );
+
+    const tx = Math.floor(
+        (targetX - originX) / cellSize
+    );
+
+    const ty = Math.floor(
+        (targetY - originY) / cellSize
+    );
+
+    if(
+        tx < 0 || ty < 0 ||
+        tx >= W || ty >= H
+    )
+    {
+        return field;
+    }
+
+    field[tx][ty] = 0;
+
+    for(let i = 0; i < sweeps; i++)
+    {
+        SweepField(
+            field,
+            collisionGrid,
+            W,
+            H,
+            cellSize,
+            0, W, 1,
+            0, H, 1
+        );
+
+        SweepField(
+            field,
+            collisionGrid,
+            W,
+            H,
+            cellSize,
+            W - 1, -1, -1,
+            0, H, 1
+        );
+
+        SweepField(
+            field,
+            collisionGrid,
+            W,
+            H,
+            cellSize,
+            0, W, 1,
+            H - 1, -1, -1
+        );
+
+        SweepField(
+            field,
+            collisionGrid,
+            W,
+            H,
+            cellSize,
+            W - 1, -1, -1,
+            H - 1, -1, -1
+        );
+    }
+
+    return field;
+}
+
+function SweepField(
+    field,
+    collisionGrid,
+    W,
+    H,
+    h,
+    startX,
+    endX,
+    stepX,
+    startY,
+    endY,
+    stepY
+)
+{
+    for(let y = startY; y !== endY; y += stepY)
+    {
+        for(let x = startX; x !== endX; x += stepX)
+        {
+            if(collisionGrid[x][y])
+            {
+                continue;
+            }
+
+            if(field[x][y] === 0)
+            {
+                continue;
+            }
+
+            const left =
+                x > 0
+                    ? field[x - 1][y]
+                    : Infinity;
+
+            const right =
+                x < W - 1
+                    ? field[x + 1][y]
+                    : Infinity;
+
+            const down =
+                y > 0
+                    ? field[x][y - 1]
+                    : Infinity;
+
+            const up =
+                y < H - 1
+                    ? field[x][y + 1]
+                    : Infinity;
+
+            const a = Math.min(left, right);
+            const b = Math.min(up, down);
+
+            let d;
+
+            if(Math.abs(a - b) >= h)
+            {
+                d = Math.min(a, b) + h;
+            }
+            else
+            {
+                d =
+                    (
+                        a +
+                        b +
+                        Math.sqrt(
+                            2 * h * h -
+                            (a - b) * (a - b)
+                        )
+                    ) * 0.5;
+            }
+
+            if(d < field[x][y])
+            {
+                field[x][y] = d;
+            }
+        }
+    }
+}
+
+function FlattenDistanceField(field)
+{
+    const width = field.length;
+    const height = field[0].length;
+
+    const buffer =
+        new Float32Array(width * height);
+
+    let i = 0;
+
+    for(let y = 0; y < height; y++)
+    {
+        for(let x = 0; x < width; x++)
+        {
+            buffer[i++] = field[x][y];
+        }
+    }
+
+    return buffer;
+}
+
+function SampleFlowGradient(
+    x, y,
+    field,
+    width,
+    height,
+    cellSize,
+    originX,
+    originY
+)
+{
+    const eps = cellSize * 0.5;
+
+    const c  = SampleDistanceField(x, y, field, width, height, cellSize, originX, originY);
+    const lx = SampleDistanceField(x - eps, y, field, width, height, cellSize, originX, originY);
+    const rx = SampleDistanceField(x + eps, y, field, width, height, cellSize, originX, originY);
+    const dy = SampleDistanceField(x, y - eps, field, width, height, cellSize, originX, originY);
+    const uy = SampleDistanceField(x, y + eps, field, width, height, cellSize, originX, originY);
+
+    if (!Number.isFinite(c))
+        return { x: 0, y: 0 };
+
+    let gx = 0;
+    let gy = 0;
+
+    if (Number.isFinite(lx) && Number.isFinite(rx))
+        gx = (rx - lx) / (2 * eps);
+    else if (Number.isFinite(rx))
+        gx = (rx - c) / eps;
+    else if (Number.isFinite(lx))
+        gx = (c - lx) / eps;
+
+    if (Number.isFinite(dy) && Number.isFinite(uy))
+        gy = (uy - dy) / (2 * eps);
+    else if (Number.isFinite(uy))
+        gy = (uy - c) / eps;
+    else if (Number.isFinite(dy))
+        gy = (c - dy) / eps;
+
+    const mag = Math.hypot(gx, gy);
+    if (mag < 1e-8)
+        return { x: 0, y: 0 };
+
+    return {
+        x: -gx / mag,
+        y: -gy / mag
+    };
+}
+
+function SampleDistanceFieldGrid(ix, iy, field, width, height)
+{
+    if (ix < 0 || iy < 0 || ix >= width || iy >= height)
+        return Infinity;
+
+    return field[ix][iy];
+}
+
+function Safe(v)
+{
+    return Number.isFinite(v);
+}
+
+function SampleDistanceField(
+    x, y,
+    field,
+    width,
+    height,
+    cellSize,
+    originX,
+    originY
+)
+{
+    const gx = (x - originX) / cellSize;
+    const gy = (y - originY) / cellSize;
+
+    const x0 = Math.floor(gx);
+    const y0 = Math.floor(gy);
+    const x1 = x0 + 1;
+    const y1 = y0 + 1;
+
+    const tx = gx - x0;
+    const ty = gy - y0;
+
+    function get(ix, iy)
+    {
+        if (
+            ix < 0 || iy < 0 ||
+            ix >= width || iy >= height
+        )
+        {
+            return Infinity;
+        }
+        return field[ix + iy * width];
+    }
+
+    const v00 = get(x0, y0);
+    const v10 = get(x1, y0);
+    const v01 = get(x0, y1);
+    const v11 = get(x1, y1);
+
+    // bilinear weights
+    const w00 = (1 - tx) * (1 - ty);
+    const w10 = tx * (1 - ty);
+    const w01 = (1 - tx) * ty;
+    const w11 = tx * ty;
+
+    let sum = 0;
+    let weight = 0;
+
+    function add(v, w)
+    {
+        if (Number.isFinite(v))
+        {
+            sum += v * w;
+            weight += w;
+        }
+    }
+
+    add(v00, w00);
+    add(v10, w10);
+    add(v01, w01);
+    add(v11, w11);
+
+    if (weight === 0)
+    {
+        return Infinity;
+    }
+
+    //console.log(sum / weight);
+
+    return sum / weight;
+}
+
+
 function CreateFlowField(
     width,
     height,
@@ -377,15 +741,19 @@ function CreateFlowField(
         curriculumStage
     );
 
-    const costField = BuildCostField(collisionGrid, targetX, targetY, fieldOriginX, fieldOriginY, cellSize);
+    const costField = BuildSmoothCostField(collisionGrid, targetX, targetY, fieldOriginX, fieldOriginY, cellSize);
 
-    let flowField = BuildFlowFieldFromCost(costField, collisionGrid);
+    //onsole.log(costField);
 
-    flowField = SmoothFlowFieldStructured(flowField, collisionGrid, fieldWidth, fieldHeight, 3, 1.5, 0.15);
+    //const costField = SmoothCostField(rawCostField, collisionGrid, width, height);
 
-    flowField = FillInvalidFlowCells(flowField, collisionGrid, width, height);
+    let flowField = BuildGradientFlowField(costField, collisionGrid, width, height);
 
-    flowField = SmoothFlowFieldStructured(flowField, collisionGrid, fieldWidth, fieldHeight, 4, 2, 0.65);
+    flowField = SmoothFlowFieldStructured(flowField, collisionGrid, fieldWidth, fieldHeight, 2, 1, 0.2);
+
+    //flowField = FillInvalidFlowCells(flowField, collisionGrid, width, height);
+
+    //flowField = SmoothFlowFieldStructured(flowField, collisionGrid, fieldWidth, fieldHeight, 4, 2, 0.65);
 
     //flowField = SmoothFlowField(flowField, width, height);
 
@@ -781,4 +1149,194 @@ function FillInvalidFlowCells(flowField, collisionGrid, width, height)
     }
 
     return out;
+}
+
+function BuildGradientFlowField(cost, collisionGrid, width, height)
+{
+    const flow = Array.from({ length: width }, () =>
+        Array.from({ length: height }, () => ({ x: 0, y: 0 }))
+    );
+
+    const EPS = 1e-6;
+
+    for (let x = 1; x < width - 1; x++)
+    for (let y = 1; y < height - 1; y++)
+    {
+        if (collisionGrid[x][y]) continue;
+
+        let cx = 0;
+        let cy = 0;
+
+        let center = cost[x][y];
+
+        // sample neighbors (finite difference gradient)
+        const left  = cost[x - 1][y];
+        const right = cost[x + 1][y];
+        const up    = cost[x][y - 1];
+        const down  = cost[x][y + 1];
+
+        // IMPORTANT: treat invalid as high cost wall
+        const safe = (v) => (v === Infinity ? center + 1000 : v);
+
+        const dX = safe(right) - safe(left);
+        const dY = safe(down) - safe(up);
+
+        cx = -dX; // NEGATIVE GRADIENT (toward lower cost)
+        cy = -dY;
+
+        const mag = Math.hypot(cx, cy);
+
+        if (mag > EPS)
+        {
+            flow[x][y].x = cx / mag;
+            flow[x][y].y = cy / mag;
+        }
+        else
+        {
+            flow[x][y].x = 0;
+            flow[x][y].y = 0;
+        }
+    }
+
+    return flow;
+}
+
+function BuildSmoothCostField(
+    collisionGrid,
+    targetX,
+    targetY,
+    originX,
+    originY,
+    cellSize
+)
+{
+    const W = collisionGrid.length;
+    const H = collisionGrid[0].length;
+
+    const cost = Array.from({ length: W }, () =>
+        Array(H).fill(Infinity)
+    );
+
+    const tx = Math.floor((targetX - originX) / cellSize);
+    const ty = Math.ceil((targetY - originY) / cellSize);
+
+    if (
+        tx < 0 || ty < 0 ||
+        tx >= W || ty >= H
+    ) return cost;
+
+    if (collisionGrid[tx][ty])
+    {
+        console.error("TARGET BLOCKED");
+        return cost;
+    }
+
+    cost[tx][ty] = 0;
+
+    const DIRS = [
+        [1,0,1],
+        [-1,0,1],
+        [0,1,1],
+        [0,-1,1],
+        [1,1,1.414],
+        [1,-1,1.414],
+        [-1,1,1.414],
+        [-1,-1,1.414]
+    ];
+
+    let updated = true;
+
+    while (updated)
+    {
+        updated = false;
+
+        for (let x = 0; x < W; x++)
+        for (let y = 0; y < H; y++)
+        {
+            if (collisionGrid[x][y]) continue;
+
+            let best = cost[x][y];
+
+            for (const [dx, dy, w] of DIRS)
+            {
+                const nx = x + dx;
+                const ny = y + dy;
+
+                if (
+                    nx < 0 || ny < 0 ||
+                    nx >= W || ny >= H
+                ) continue;
+
+                if (collisionGrid[nx][ny]) continue;
+
+                const ncost = cost[nx][ny];
+
+                if (ncost === Infinity) continue;
+
+                const candidate = ncost + w;
+
+                if (candidate < best)
+                {
+                    best = candidate;
+                    updated = true;
+                }
+            }
+
+            cost[x][y] = best;
+        }
+    }
+
+    return cost;
+}
+
+function SmoothCostField(cost, collisionGrid, width, height, iterations = 2, alpha = 0.6)
+{
+    let field = cost.map(col => col.slice());
+
+    for (let iter = 0; iter < iterations; iter++)
+    {
+        const next = field.map(col => col.slice());
+
+        for (let x = 1; x < width - 1; x++)
+        for (let y = 1; y < height - 1; y++)
+        {
+            if (collisionGrid[x][y]) continue;
+
+            const c = field[x][y];
+
+            const avg =
+                field[x+1][y] +
+                field[x-1][y] +
+                field[x][y+1] +
+                field[x][y-1];
+
+            const smoothed = (avg / 4);
+
+            next[x][y] = c * (1 - alpha) + smoothed * alpha;
+        }
+
+        field = next;
+    }
+
+    return field;
+}
+
+function SampleGradient(x, y, eps)
+{
+
+    const left  = SampleDistanceField(x - eps, y);
+    const right = SampleDistanceField(x + eps, y);
+
+    const down  = SampleDistanceField(x, y - eps);
+    const up    = SampleDistanceField(x, y + eps);
+
+    const gx = (right - left) / (2 * eps);
+    const gy = (up - down) / (2 * eps);
+
+    const mag = Math.hypot(gx, gy) || 1;
+
+    return {
+        x: -gx / mag,
+        y: -gy / mag
+    };
 }

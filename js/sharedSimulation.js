@@ -13,7 +13,7 @@ function ResetLayers(network)
     for (var node = 0; node < network.mb2.length; node++) {network.mb2[node] = 0;}
 }
 
-function UpdateNeuralNetwork(network, agent, targetX, targetY, groundY, targetRadius, dt, generationSeed, curriculumStage, obstacles, flowField, fieldWidth, fieldHeight, cellSize, fieldOriginX, fieldOriginY) 
+function UpdateNeuralNetwork(network, agent, targetX, targetY, groundY, targetRadius, dt, generationSeed, curriculumStage, obstacles, distanceField, fieldWidth, fieldHeight, cellSize, fieldOriginX, fieldOriginY) 
 {   
     const inputs = network.inputs;
     const cn1 = network.cn1;
@@ -41,7 +41,7 @@ function UpdateNeuralNetwork(network, agent, targetX, targetY, groundY, targetRa
     const velocityDir = Math.atan2(agent.yVel, agent.xVel);
 
 
-    const fieldVector = SampleFlowField(agent.xPos, agent.yPos, flowField, cellSize, fieldWidth, fieldHeight, fieldOriginX, fieldOriginY);
+    const fieldVector = SampleFlowGradient(agent.xPos, agent.yPos, distanceField, fieldWidth, fieldHeight, cellSize, fieldOriginX, fieldOriginY);
     const fieldDir = Math.atan2(fieldVector.y, fieldVector.x);
 
     const fieldVelocityDifference = fieldDir - velocityDir;
@@ -400,7 +400,7 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
                  thrustBurn, windForceX, windForceY, 
                  crashVelocity, curriculumStage,
                  generationLength, scores, generationSeed, traj, trajVal, obstacles,
-                 flowField, fieldWidth, fieldHeight, cellSize,
+                 distanceField, fieldWidth, fieldHeight, cellSize,
                  fieldOriginX, fieldOriginY)
 {
     const targetY = GetGroundHeight(targetX, groundY, generationSeed, targetX, targetRadius, curriculumStage);
@@ -414,7 +414,7 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
 
         UpdateNeuralNetwork(networks[i], agents[i],
                            targetX, targetY, groundY, targetRadius, dt, generationSeed, curriculumStage, obstacles,
-                           flowField, fieldWidth, fieldHeight, cellSize, fieldOriginX, fieldOriginY);
+                           distanceField, fieldWidth, fieldHeight, cellSize, fieldOriginX, fieldOriginY);
 
         
         const rotationCommand = networks[i].outputs[0];

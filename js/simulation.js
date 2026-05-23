@@ -151,7 +151,7 @@ function SetNextGen(initialize = false)
     windForceY = Math.sin(windDirection) * globalWindMagnitude;
     windForceX = Math.cos(windDirection) * globalWindMagnitude;
 
-    flowField = CreateFlowField(
+    /*flowField = CreateFlowField(
         fieldWidth,
         fieldHeight,
         cellSize,
@@ -164,7 +164,21 @@ function SetNextGen(initialize = false)
         fieldOriginX,
         fieldOriginY
     );
-    flatFlowField = new Float32Array(FlattenFlowField(flowField));
+    flatFlowField = new Float32Array(FlattenFlowField(flowField));*/
+
+    distanceField = CreateDistanceField(
+        fieldWidth,
+        fieldHeight,
+        cellSize,
+        targetX,
+        groundY,
+        generationSeed,
+        targetRadius,
+        curriculumStage,
+        obstacles,
+        fieldOriginX,
+        fieldOriginY
+    );
     //console.log(flowField);
 }
 
@@ -177,7 +191,7 @@ function update(dt) /***************************** UPDATE **********************
                  thrustBurn, windForceX, windForceY, 
                  crashVelocity, curriculumStage,
                  generationLength, scores, generationSeed, trajectory, trajectoryValue, obstacles,
-                 flatFlowField, fieldWidth, fieldHeight, cellSize,
+                 distanceField, fieldWidth, fieldHeight, cellSize,
                  fieldOriginX, fieldOriginY);
 
     

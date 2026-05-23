@@ -13,7 +13,7 @@ onmessage = function(event) {
         curriculumStage, generationSeed,
         obsAmount, obsDensity,
         networkShape,
-        flowField,
+        distanceField,
         fieldWidth, fieldHeight, cellSize,
         fieldOriginX, fieldOriginY
     } = event.data;
@@ -54,7 +54,7 @@ onmessage = function(event) {
                  thrustBurn, windForceX, windForceY, 
                  crashVelocity, curriculumStage,
                  generationLength, scores, generationSeed, trajectory, trajectoryValue, obstacles,
-                 flowField, fieldWidth, fieldHeight, cellSize,
+                 distanceField, fieldWidth, fieldHeight, cellSize,
                  fieldOriginX, fieldOriginY);
 
         //console.log(trajectory);

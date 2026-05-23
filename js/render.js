@@ -10,8 +10,8 @@ function render()
 
     if(renderField)
     {
-        DrawFlowField(
-            flatFlowField,
+        DrawDistanceField(
+            distanceField,
             fieldWidth,
             fieldHeight,
             cellSize,
@@ -43,14 +43,14 @@ function render()
         }
     }
 
-    DrawAgent(agents[bestIndex]);
+    DrawAgent(agents[bestIndex], "black", true);
 
     for(var i = 1; i < 10; i++)
     {
-        DrawAgent(agents[i], "Blue");
+        DrawAgent(agents[i], "Blue", true);
     }
 
-    DrawAgent(agents[0], "Red");
+    DrawAgent(agents[0], "Red", true);
 
     /*for(var i = 0; i < targets.length; i++)
     {
@@ -98,7 +98,7 @@ function UnrenderedSnapshot()
     ctx.fill(); // Optional: Fill the circle with color
 }
 
-function DrawAgent(agent, color = "Black")
+function DrawAgent(agent, color = "Black", drawVectorLine = false)
 {
 const ctx = m_ctx;
 
@@ -137,6 +137,17 @@ ctx.beginPath();
 ctx.moveTo(agent.xPos * pixelsPerMeter, -agent.yPos * pixelsPerMeter);
 ctx.lineTo((agent.xPos + (Math.cos(agent.angle) * 2.5)) * pixelsPerMeter, -(agent.yPos + (Math.sin(agent.angle)) * 2.5) * pixelsPerMeter);
 ctx.stroke();          // Render the line
+
+    if(drawVectorLine)
+    {
+        const v = SampleFlowGradient(agent.xPos, agent.yPos, distanceField, fieldWidth, fieldHeight, cellSize, fieldOriginX, fieldOriginY);
+
+        ctx.strokeStyle = "Cyan";
+        ctx.beginPath();
+        ctx.moveTo(agent.xPos * pixelsPerMeter, -agent.yPos * pixelsPerMeter);
+        ctx.lineTo((agent.xPos + (v.x * 5)) * pixelsPerMeter, -(agent.yPos + (v.y * 5)) * pixelsPerMeter);
+        ctx.stroke();          // Render the line
+    }
 }
 
 function DrawTarget(x, y, id)
@@ -1471,6 +1482,106 @@ function DrawFlowField(
             ctx.beginPath();
             ctx.arc(px + dx, py + dy, 1.2, 0, Math.PI * 2);
             ctx.fillStyle = `rgba(${(fx + 1) * 127.5}, ${(fy + 1) * 127.5}, 0, 0.6)`;;
+            ctx.fill();
+        }
+    }
+
+    ctx.restore();
+}
+
+function DrawDistanceField(
+    distanceField,
+    width,
+    height,
+    cellSize,
+    fieldOriginX,
+    fieldOriginY
+)
+{
+    const ctx = m_ctx;
+
+    ctx.save();
+
+    const scale = cellSize * pixelsPerMeter * 0.8;
+
+    const worldLeft   = 0;
+    const worldRight  = 0 + canvas.width  / pixelsPerMeter;
+    const worldTop    = 0;
+    const worldBottom = 0 - canvas.height / pixelsPerMeter;
+
+    let minX = Math.floor((worldLeft  - fieldOriginX) / cellSize);
+    let maxX = Math.ceil ((worldRight - fieldOriginX) / cellSize);
+
+    let minY = Math.floor((worldBottom - fieldOriginY) / cellSize);
+    let maxY = Math.ceil ((worldTop    - fieldOriginY) / cellSize);
+
+    minX = Math.max(0, minX);
+    minY = Math.max(0, minY);
+    maxX = Math.min(width - 1, maxX);
+    maxY = Math.min(height - 1, maxY);
+
+    //----------------------------------------
+    // SAMPLE DISTANCE HELPER
+    //----------------------------------------
+
+    function get(x, y)
+    {
+        if (
+            x < 0 || y < 0 ||
+            x >= width || y >= height
+        )
+        {
+            return Infinity;
+        }
+
+        return distanceField[x + y * width];
+    }
+
+    //----------------------------------------
+    // DRAW
+    //----------------------------------------
+
+    for (let y = minY; y <= maxY; y++)
+    {
+        for (let x = minX; x <= maxX; x++)
+        {
+            const center = get(x, y);
+
+            if (!Number.isFinite(center))
+                continue;
+
+            const wx = fieldOriginX + x * cellSize;
+            const wy = fieldOriginY + y * cellSize;
+
+            const px = wx * pixelsPerMeter;
+            const py = -wy * pixelsPerMeter;
+
+            const v = SampleFlowGradient(
+                wx,
+                wy,
+                distanceField,
+                width,
+                height,
+                cellSize,
+                fieldOriginX,
+                fieldOriginY
+            );
+
+            const dx = v.x * scale;
+            const dy = -v.y * scale;
+
+            ctx.strokeStyle =
+                `rgba(${(v.x + 1) * 127.5}, ${(v.y + 1) * 127.5}, 0, 0.7)`;
+
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            ctx.lineTo(px + dx, py + dy);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(px + dx, py + dy, 1.2, 0, Math.PI * 2);
+            ctx.fillStyle =
+                `rgba(${(v.x + 1) * 127.5}, ${(v.y + 1) * 127.5}, 0, 0.7)`;
             ctx.fill();
         }
     }
