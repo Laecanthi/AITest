@@ -20,8 +20,6 @@ function SaveSnapshot(neuralNetworks, generation, curriculumStage, curriculumCap
             bs1: [...n.bs1],
             bs2: [...n.bs2],
             bs3: [...n.bs3],
-            mb1: [...n.mb1],
-            mb2: [...n.mb2],
         }))
     });
 }
@@ -37,15 +35,21 @@ function LoadSnapshot(json)
         bs1: new Float32Array(n.bs1),
         bs2: new Float32Array(n.bs2),
         bs3: new Float32Array(n.bs3),
-        mb1: new Float32Array(n.mb1),
-        mb2: new Float32Array(n.mb2),
     }));
 
     return {
         neuralNetworks: networks,
+
         generation: data.generation,
         curriculumStage: data.curriculumStage,
-        curriculumCap: data.curriculumCap
+        curriculumCap: data.curriculumCap,
+
+        inputsLength: data.inputsLength,
+        hl1Length: data.hl1Length,
+        hl2Length: data.hl2Length,
+        outputsLength: data.outputsLength,
+        mb1Length: data.mb1Length,
+        mb2Length: data.mb2Length
     };
 }
 

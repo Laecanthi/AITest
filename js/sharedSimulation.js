@@ -71,6 +71,8 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius, dt,
 
     inputs[15] = speed / 25;
 
+    inputs[16] = (targetX - agent.xPos) / 100; // difference X
+
     // end of inputs
 
     //update hl1
@@ -185,11 +187,11 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius, dt,
             sum = 0;
         }
 
-        const memoryResponseRates = [
-            2.0,   // medium
+        const memoryResponseRates = [   
+            0.1,    // very slow
             0.5,   // slow
-            8.0,   // very fast
-            0.1    // very slow
+            2.0,   // medium
+            8.0   // very fast
         ];
 
         const responseRate =
@@ -218,7 +220,7 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius, dt,
 }
 
 
-function UpdateAgent(agent, dt, thrustBurn, minThrust, windForceX, windForceY, crashVelocity, time, generationSeed)
+function UpdateAgent(agent, dt, thrustBurn, minThrust, windForceX, windForceY, crashVelocity, time, generationSeed, curriculumStage)
 {
     //agent.xThrust = clamp(agent.xThrust, -1, 1);
     //agent.yThrust = clamp(agent.yThrust, -1, 1);
@@ -242,6 +244,8 @@ function UpdateAgent(agent, dt, thrustBurn, minThrust, windForceX, windForceY, c
 
     const TMnoise = FractalNoise1D(time * 10, generationSeed + 4) * 0.04; // extra noise that is multiplecative
     const TDnoise = FractalNoise1D(time * 5, generationSeed + 21) * 0.12; // the noise applied to deep thrusting
+    
+    const noiseApplication = CurriculumBlend([0, 0.5, 1], curriculumStage);
 
     agent.thrust = clamp(agent.thrust, 0, 1);
     agent.rotation = clamp(agent.rotation, -1, 1);
@@ -269,13 +273,13 @@ function UpdateAgent(agent, dt, thrustBurn, minThrust, windForceX, windForceY, c
         const instability =
             1 - normalizedThrottle;
 
-        actualThrust *= 1 + (TMnoise + (TDnoise * instability));
-        actualThrust += TactuatorNoise;
+        actualThrust *= 1 + (TMnoise + (TDnoise * instability)) * noiseApplication;
+        actualThrust += TactuatorNoise * noiseApplication;
     }
 
     if(actualRotation != 0) // if rotation is actually being applied
     {
-        actualRotation += RactuatorNoise;
+        actualRotation += RactuatorNoise * noiseApplication;
     }
 
     actualThrust = Math.max(actualThrust, 0); // thrust cannot be negative
@@ -336,7 +340,10 @@ function UpdateAgent(agent, dt, thrustBurn, minThrust, windForceX, windForceY, c
         speed *
         0.0008; // small but persistent correction
 
+    const externalTorqueApplication = CurriculumBlend([0.1,0.5,0.75,1], curriculumStage);
+
     var aExternalForce = windTorque - alignmentTorque;
+    aExternalForce *= externalTorqueApplication;
 
     xExternalForce += windForceX * localWindMagnitude;
     yExternalForce += windForceY * localWindMagnitude;
@@ -406,30 +413,25 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
                            targetX, groundY, targetRadius, dt, generationSeed, curriculumStage, obstacles,
                            flowField, fieldWidth, fieldHeight, cellSize, fieldOriginX, fieldOriginY);
 
-        const minThrust = 0.4;
-        const deadzone = 0.02;
-        const spoolUpRate = 4.5;
-        const spoolDownRate = 7.0;
-
-        /*let targetRotation = networks[i].outputs[0];
-        let targetThrust = networks[i].outputs[1];
-        if(targetThrust < 0)
-        {
-            targetThrust = 0;
-            agents[i].thrust = LinearTargetChange(agents[i].thrust, targetThrust, dt * 3.33);
-        }else{
-            targetThrust = lerp(minThrust, 1, targetThrust);
-            agents[i].thrust = LinearTargetChange(agents[i].thrust, targetThrust, dt * 6.67);
-        }
-        if(Math.abs(targetRotation) <= deadzone)
-        {
-            targetRotation = 0;
-        }
-
-        agents[i].rotation = LinearTargetChange(agents[i].rotation, targetRotation, dt * 8);*/
-
+        
         const rotationCommand = networks[i].outputs[0];
         const engineCommand = networks[i].outputs[1];
+
+        const minThrust = 0.4;
+        const deadzone = 0.02;
+
+        /*const spoolUpRate = 4.5; // default values
+        const spoolDownRate = 7.0;
+        const ignitionDelay = 0.25;
+        const shutdownDelay = 0.15;
+        const cooldownLength = 0.75;*/
+
+        const spoolUpRate = CurriculumBlend([15, 10, 7.0, 4.5], curriculumStage);
+        const spoolDownRate = CurriculumBlend([15, 10, 7.0], curriculumStage);
+        const ignitionDelay = CurriculumBlend([0.01, 0.1, 0.25], curriculumStage);
+        const shutdownDelay = CurriculumBlend([0.01, 0.05, 0.15], curriculumStage);
+        const cooldownLength = CurriculumBlend([0.05, 0.1, 0.25, 0.75], curriculumStage);
+        const rotationSpoolRate = CurriculumBlend([25, 15, 7], curriculumStage);
 
         const agent = agents[i];
 
@@ -448,7 +450,7 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
                 agent.engineTimer += dt;
 
                 // ignition takes time
-                if(agent.engineTimer >= 0.25)
+                if(agent.engineTimer >= ignitionDelay)
                 {
                     agent.engineOn = true;
                     agent.engineTimer = 0;
@@ -463,12 +465,12 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
                 agent.engineTimer += dt;
 
                 // shutdown takes time
-                if(agent.engineTimer >= 0.15)
+                if(agent.engineTimer >= shutdownDelay)
                 {
                     agent.engineOn = false;
                     agent.engineTimer = 0;
 
-                    agent.engineCooldown = 0.75;
+                    agent.engineCooldown = cooldownLength;
                 }
             }
             else
@@ -507,14 +509,14 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
 
         if(Math.abs(rotationCommand) > deadzone)
         {
-            agent.rotation = LinearTargetChange(agent.rotation, rotationCommand, dt * 7);
+            agent.rotation = LinearTargetChange(agent.rotation, rotationCommand, dt * rotationSpoolRate);
         }else{
-            agent.rotation = LinearTargetChange(agent.rotation, 0, dt * 7);
+            agent.rotation = LinearTargetChange(agent.rotation, 0, dt * rotationSpoolRate);
         }
 
         
 
-        UpdateAgent(agent, dt, thrustBurn, minThrust, windForceX, windForceY, crashVelocity, time, generationSeed);
+        UpdateAgent(agent, dt, thrustBurn, minThrust, windForceX, windForceY, crashVelocity, time, generationSeed, curriculumStage);
 
         if (CollideAnything(
                 agents[i].xPos,
@@ -632,11 +634,6 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
 
 function CalculateScore(agent, targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed)
 {
-    // agent never landed - worst possible outcome
-    if(agent.alive)
-    {
-        return 10000;
-    }
 
     let score = 0;
     const targetY = GetGroundHeight(targetX, groundY, generationSeed, targetX, targetRadius, curriculumStage);
@@ -668,14 +665,30 @@ function CalculateScore(agent, targetX, groundY, targetRadius, generationLength,
     const horizontalError = Math.abs(agent.xPos - targetX);
     score += horizontalError * 20;
 
+    const distance = Math.sqrt(horizontalError*horizontalError+(agent.yPos - targetY)*(agent.yPos - targetY));
+
     // big reward for landing in target zone, else punishment for distance (when obstacles become a bigger issue, there needs to be at least some guidance towards target)
     if(horizontalError <= targetRadius && agent.yPos < targetY + 1)
     {
         score -= 2000;
         score -= (targetRadius - horizontalError) / targetRadius * 2000; // extra bonus for landing in the center of the target zone
     }else{
-        score += Math.sqrt(horizontalError*horizontalError+(agent.yPos - targetY)*(agent.yPos - targetY)) / targetRadius * 500;
+        score += distance / targetRadius * 500;
     }
+
+    // agent never landed - big punishment
+    if(agent.alive)
+    {
+        score += verticalSpeed;
+        score += horizontalSpeed;
+        score += angularSpeed;
+        score += angleError * 100;
+        score += distance * 200;
+        score += 100;
+        return score;
+    }
+
+    // these only matter for agents that have landed
 
     // FUEL CONSERVATION - bonus for not wasting fuel
     score -= (agent.fuel / 500) * 500;
@@ -683,7 +696,7 @@ function CalculateScore(agent, targetX, groundY, targetRadius, generationLength,
     // TIME TAKEN TO LAND
     if(isFinite(agent.timeOfDeath))
     {
-        score -= (agent.timeOfDeath / generationLength) * 1000;
+        score -= (agent.timeOfDeath / generationLength) * 150;
     }else{
         console.error(agent.timeOfDeath);
     }

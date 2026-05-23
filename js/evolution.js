@@ -8,7 +8,7 @@ function MutateNextGen() /**************************************** NEXT GENERATI
     }
 
     population = neuralNetworks.map((network, index) => {
-    return { network: network, score: scores[index] - (grades[index] * 1000), rawScore: scores[index], grade: grades[index] }; // agents are given an addition 1000 reward for its grade
+    return { network: network, score: scores[index] - (grades[index] * 250), rawScore: scores[index], grade: grades[index] }; // agents are given an addition 1000 reward for its grade
     });
 
     population.sort((a, b) => a.score - b.score);
@@ -45,7 +45,7 @@ function MutateNextGen() /**************************************** NEXT GENERATI
     const maxRetries = 4;
     const maxFlips = 3;
 
-    if(Math.abs(deltaScore) > 1) // if delta score is greater than 100%
+    if(Math.abs(deltaScore) > 0.5) // if delta score is greater than 50%
     {
         deltaScore *= 100;
 
@@ -142,7 +142,7 @@ function MutateNextGen() /**************************************** NEXT GENERATI
 
     const eliteCount = Math.floor(
         amountOfAgents *
-        CurriculumBlend([0.02, 0.05, 0.12, 0.20])
+        CurriculumBlend([0.02, 0.04, 0.07, 0.10])
     );
 
     let nextGeneration = [];
@@ -178,7 +178,7 @@ function MutateNextGen() /**************************************** NEXT GENERATI
     for(let i = 0; i < survivors.length; i++)
     {
         const grade = survivors[i].grade;
-        maxGradeAgents.push(survivors[i]);
+        if(grade === 4) maxGradeAgents.push(survivors[i]);
     }
 
     console.log(
@@ -194,6 +194,7 @@ function MutateNextGen() /**************************************** NEXT GENERATI
             // clone + mutate single parent
             let parent = TournamentSelect(survivors);
             var percentile = population.indexOf(parent);
+            percentile /= survivors.length;
             let child = NudgeNetwork(CloneNetwork(parent.network), percentile);
 
             child.i = nextGeneration.length;
@@ -206,7 +207,7 @@ function MutateNextGen() /**************************************** NEXT GENERATI
             let parentB = TournamentSelect(survivors);
 
             var percentile = population.indexOf(parentA) + population.indexOf(parentB);
-            percentile /= 2 * amountOfAgents;
+            percentile /= 2 * survivors.length;
 
             let child = Crossover(parentA.network, parentB.network);
 
@@ -227,7 +228,7 @@ function TournamentSelect(population)
 {
     let best = null;
 
-    for (let i = 0; i < 5; i++)
+    for (let i = 0; i < 3; i++)
     {
         let candidate =
             population[Math.floor(Math.random() * population.length)];

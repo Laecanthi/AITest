@@ -140,8 +140,8 @@ let flatFlowField = null;
 
 var inputLabels =
     [
-        "Relative target x",
-        "Signed distance",
+        "Relative FF Sine",
+        "Relative FF Cosine",
         "Y Pos",
         "X Pos",
         "Sine of angle",
@@ -154,7 +154,8 @@ var inputLabels =
         "External Force Y",
         "Ray Forward",
         "Ray Motion",
-        "Ray Down"
+        "Ray Down",
+        "Relative target x"
     ];
 
 var outputLabels =
