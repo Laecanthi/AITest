@@ -13,7 +13,7 @@ function ResetLayers(network)
     for (var node = 0; node < network.mb2.length; node++) {network.mb2[node] = 0;}
 }
 
-function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius, dt, generationSeed, curriculumStage, obstacles, flowField, fieldWidth, fieldHeight, cellSize, fieldOriginX, fieldOriginY) 
+function UpdateNeuralNetwork(network, agent, targetX, targetY, groundY, targetRadius, dt, generationSeed, curriculumStage, obstacles, flowField, fieldWidth, fieldHeight, cellSize, fieldOriginX, fieldOriginY) 
 {   
     const inputs = network.inputs;
     const cn1 = network.cn1;
@@ -50,28 +50,29 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius, dt,
 
     /**************************************** INPUTS ********************************/
 
-    //inputs[0] = (targetX - agent.xPos) / 100; // difference X
-    //inputs[1] = (GetGroundHeight(targetX, groundY, generationSeed, targetX, targetRadius, curriculumStage) - agent.yPos) / 100; // difference Y
     inputs[0] = Math.sin(fieldVelocityDifference);
     inputs[1] = Math.cos(fieldVelocityDifference);
-    inputs[2] = (agent.yPos + 60) / 100; // y pos
-    inputs[3] = (agent.xPos - 80) / 100; // x pos
+    inputs[2] = (targetX - agent.xPos) / 200; // difference X
+    inputs[3] = (targetY - agent.yPos) / 200; // difference Y
+    //inputs[2] = (agent.yPos + 60) / 100; // y pos
+    //inputs[3] = (agent.xPos - 80) / 100; // x pos
     inputs[4] = Math.sin(agent.angle);
     inputs[5] = Math.cos(agent.angle);
     inputs[6] = (agent.xVel) / 25;
     inputs[7] = (agent.yVel) / 25;
-    inputs[8] = (agent.aVel) * 5;
+    inputs[8] = (agent.aVel) * 15;
     inputs[9] = agent.fuel / 500;
-    inputs[10] = agent.xLastExternalForce / 10;
-    inputs[11] = agent.yLastExternalForce / 10;
+    inputs[10] = agent.xLastExternalForce / 25; // normalized to be generally within -1 to 1 under a majority of conditions
+    inputs[11] = agent.yLastExternalForce / 25; // normalized to be generally within -1 to 1 under a majority of conditions
+    inputs[12] = agent.aLastExternalForce * 15; // normalized to be generally within -1 to 1 under a majority of conditions
 
-    inputs[12] = RaycastStep(agent.xPos, agent.yPos, agent.angle, 25, obstacles, groundY, generationSeed, targetX, targetRadius, curriculumStage);
-    inputs[13] = RaycastStep(agent.xPos, agent.yPos, velocityDir, 25, obstacles, groundY, generationSeed, targetX, targetRadius, curriculumStage);
-    inputs[14] = RaycastStep(agent.xPos, agent.yPos, -Math.PI / 2, 25, obstacles, groundY, generationSeed, targetX, targetRadius, curriculumStage);
+    inputs[13] = RaycastStep(agent.xPos, agent.yPos, agent.angle, 25, obstacles, groundY, generationSeed, targetX, targetRadius, curriculumStage);
+    inputs[14] = RaycastStep(agent.xPos, agent.yPos, velocityDir, 25, obstacles, groundY, generationSeed, targetX, targetRadius, curriculumStage);
+    inputs[15] = RaycastStep(agent.xPos, agent.yPos, -Math.PI / 2, 25, obstacles, groundY, generationSeed, targetX, targetRadius, curriculumStage);
 
-    inputs[15] = speed / 25;
+    //inputs[15] = speed / 25;
 
-    inputs[16] = (targetX - agent.xPos) / 100; // difference X
+    //inputs[16] = (targetX - agent.xPos) / 25; // difference X
 
     // end of inputs
 
@@ -402,6 +403,8 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
                  flowField, fieldWidth, fieldHeight, cellSize,
                  fieldOriginX, fieldOriginY)
 {
+    const targetY = GetGroundHeight(targetX, groundY, generationSeed, targetX, targetRadius, curriculumStage);
+
     for(let i = 0; i < agents.length; i++)
     {
         if(!agents[i].alive) continue;
@@ -410,7 +413,7 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
         var lastThrust = agents[i].thrust;
 
         UpdateNeuralNetwork(networks[i], agents[i],
-                           targetX, groundY, targetRadius, dt, generationSeed, curriculumStage, obstacles,
+                           targetX, targetY, groundY, targetRadius, dt, generationSeed, curriculumStage, obstacles,
                            flowField, fieldWidth, fieldHeight, cellSize, fieldOriginX, fieldOriginY);
 
         
@@ -585,9 +588,9 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
 
             conditionsHistory.push([
                 agents[i].fuel / 250 - 1,
-                agents[i].xLastExternalForce / 10,
-                agents[i].yLastExternalForce / 10,
-                agents[i].aExternalForce,
+                agents[i].xLastExternalForce / 25,
+                agents[i].yLastExternalForce / 25,
+                agents[i].aLastExternalForce * 15,
             ]);
 
             // EVENTS
@@ -893,12 +896,12 @@ function GetGroundHeight(x, y, generationSeed, targetX, targetRadius, curriculum
     if(Math.abs(x - targetX) <= targetRadius)
     {
         return (
-            FractalNoise1D(targetX * CurriculumBlend([0, 0, 0.01, 0.02, 0.04], curriculumStage) /2, generationSeed) * CurriculumBlend([0,25,50,100,250], curriculumStage) / 10
+            FractalNoise1D(targetX * CurriculumBlend([0, 0, 0.01, 0.02, 0.04, 0.05], curriculumStage) /2, generationSeed) * CurriculumBlend([0,25,50,100,250,500], curriculumStage) / 10
             + y
         );
     }else{
         return (
-            FractalNoise1D(x * CurriculumBlend([0, 0, 0.01, 0.02, 0.04], curriculumStage) /2, generationSeed) * CurriculumBlend([0,25,50,100,250], curriculumStage) / 10
+            FractalNoise1D(x * CurriculumBlend([0, 0, 0.01, 0.02, 0.04, 0.05], curriculumStage) /2, generationSeed) * CurriculumBlend([0,25,50,100,250,500], curriculumStage) / 10
             + y
         );
     }

@@ -186,7 +186,7 @@ function BuildAgents() /********************************************** CREATE AG
     {
         agents.push(new Agent(randomPosX, randomPosY, 50, 500, 0.1, 3000, 80));
 
-        var newNetwork = new NeuralNetwork(15, 16, 16, 2, 4, 4);
+        var newNetwork = new NeuralNetwork(16, 16, 16, 2, 4, 4);
 
         for (var node = 0; node < newNetwork.cn1.length; node++) {newNetwork.cn1[node] = Math.random() * 2 - 1;}
         for (var node = 0; node < newNetwork.cn2.length; node++) {newNetwork.cn2[node] = Math.random() * 2 - 1;}

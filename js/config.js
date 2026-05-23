@@ -59,10 +59,6 @@ var neuralNetworks = [];
 var scores = [];
 var grades = [];
 const amountOfAgents = 300;
-var passRate = 0;
-var highestPassRateDuringCurriculum = 0;
-var curriculumCap = 0.999; //just below zero so that it can't start the next curriculum without increasing the cap
-var capTimer = 50;
 
 var time = 0;
 var substepTime = 0;
@@ -116,6 +112,11 @@ var retrySign = 0;
 var retryFlipCount = 0;
 var lastVerifiedGeneration = 0;
 
+var passRate = 0;
+var highestPassRateDuringCurriculum = 0;
+var curriculumCap = 0.999; //just below zero so that it can't start the next curriculum without increasing the cap
+var capTimer = 50;
+
 let obstacles = [];
 var obsAmount = 15;
 var obsDensity = 25;
@@ -142,20 +143,20 @@ var inputLabels =
     [
         "Relative FF Sine",
         "Relative FF Cosine",
-        "Y Pos",
-        "X Pos",
+        "Relative X Pos",
+        "Relative Y Pos",
         "Sine of angle",
         "Cosine of angle",
         "X Vel",
         "Y Vel",
-        "Angular Vel",
+        "A Vel",
         "Fuel",
         "External Force X",
         "External Force Y",
+        "External Force A",
         "Ray Forward",
         "Ray Motion",
-        "Ray Down",
-        "Relative target x"
+        "Ray Down"
     ];
 
 var outputLabels =
