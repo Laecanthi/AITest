@@ -15,6 +15,9 @@ const nonLeaderOpacitySlider =
 const renderSimulationCheckbox =
     document.getElementById("renderSimulationCheckbox");
 
+    const renderFieldCheckbox =
+    document.getElementById("renderFieldCheckbox");
+
 const stopAtGenerationCheckbox =
     document.getElementById("stopAtGenerationCheckbox");
 
@@ -59,6 +62,11 @@ renderSimulationCheckbox.oninput = function()
         "Queued render mode change:",
         pendingRenderMode ? "rendered" : "unrendered"
     );
+};
+
+renderFieldCheckbox.oninput = function()
+{
+    renderField = this.checked
 };
 
 stopAtGenerationCheckbox.oninput = function()
@@ -392,7 +400,9 @@ function startNextGeneration()
             fThrust: a.fThrust, torque: a.torque,
             lastDist: a.lastDist, alive: a.alive,
             xLastExternalForce: a.xLastExternalForce,
-            yLastExternalForce: a.yLastExternalForce
+            yLastExternalForce: a.yLastExternalForce,
+            aLastExternalForce: a.aLastExternalForce,
+            engineOn: a.engineOn, engineTimer: a.engineTimer, engineCooldown: a.engineCooldown
         }));
 
         workers[w].postMessage({
@@ -412,7 +422,10 @@ function startNextGeneration()
                 hl1Len: neuralNetworks[0].hl1.length,
                 hl2Len: neuralNetworks[0].hl2.length,
                 outputLen: neuralNetworks[0].outputs.length,
-            }
+            },
+            flowField: flatFlowField,
+            fieldWidth, fieldHeight, cellSize,
+            fieldOriginX, fieldOriginY
         });
     }
 }

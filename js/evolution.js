@@ -102,6 +102,44 @@ function MutateNextGen() /**************************************** NEXT GENERATI
 
     //console.log("Best score: " + best.toFixed(2) + ", average score: " + average.toFixed(2) + ", median score: " + median.toFixed(2));
 
+    let percent0 = 0;
+    let percent1 = 0;
+    let percent2 = 0;
+    let percent3 = 0;
+    let percent4 = 0;
+
+    for(let i = 0; i < population.length; i++)
+    {
+        const grade = population[i].grade;
+        if(grade == 0)
+        {
+            percent0++;
+        }else{
+            if(grade == 2)
+            {
+                percent2++;
+            }else{
+                if(grade == 1)
+                {
+                    percent1++;
+                }else{
+                    if(grade == 3)
+                    {
+                        percent3++;
+                    }else{
+                        percent4++;
+                    }
+                }
+            }
+        }
+    }
+
+    grade0History.push(percent0);
+    grade1History.push(percent1);
+    grade2History.push(percent2);
+    grade3History.push(percent3);
+    grade4History.push(percent4);
+
     const eliteCount = Math.floor(
         amountOfAgents *
         CurriculumBlend([0.02, 0.05, 0.12, 0.20])
@@ -139,10 +177,8 @@ function MutateNextGen() /**************************************** NEXT GENERATI
 
     for(let i = 0; i < survivors.length; i++)
     {
-        if(survivors[i].grade == 4)
-        {
-            maxGradeAgents.push(survivors[i]);
-        }
+        const grade = survivors[i].grade;
+        maxGradeAgents.push(survivors[i]);
     }
 
     console.log(

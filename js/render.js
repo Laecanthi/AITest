@@ -8,6 +8,19 @@ function render()
 
     DrawGround();
 
+    if(renderField)
+    {
+        DrawFlowField(
+            flatFlowField,
+            fieldWidth,
+            fieldHeight,
+            cellSize,
+            fieldOriginX,
+            fieldOriginY
+        );
+    }
+    
+
     if(!showOnlyLeader)
     {
         ctx.globalAlpha = nonLeaderOpacity;
@@ -194,24 +207,44 @@ PlotArray(averageScore, "Green");
 PlotArray(medianScore, "Blue");
 PlotArray(worstScore, "Red");
 
-ctx.strokeStyle = "Black";
+ctx.strokeStyle = "black";
 
-ctx.beginPath();
-ctx.moveTo(0, yShift + genCanv.height);
-ctx.lineTo(genCanv.width, yShift + genCanv.height);
-ctx.moveTo(0, yShift + genCanv.height + (1000 * graphYScale));
-ctx.lineTo(genCanv.width, yShift + genCanv.height + (1000 * graphYScale));
-ctx.moveTo(0, yShift + genCanv.height + (10000 * graphYScale));
-ctx.lineTo(genCanv.width, yShift + genCanv.height + (10000 * graphYScale));
-ctx.moveTo(0, yShift + genCanv.height + (20000 * graphYScale));
-ctx.lineTo(genCanv.width, yShift + genCanv.height + (20000 * graphYScale));
-ctx.moveTo(0, yShift + genCanv.height + (50000 * graphYScale));
-ctx.lineTo(genCanv.width, yShift + genCanv.height + (50000 * graphYScale));
-ctx.moveTo(0, yShift + genCanv.height + (100000 * graphYScale));
-ctx.lineTo(genCanv.width, yShift + genCanv.height + (100000 * graphYScale));
-ctx.stroke();
+DrawHorizontalGrid(ctx, [
+    0,
+    1000,
+    10000,
+    20000,
+    50000,
+    100000
+], graphYScale);
 
 AddTitle(ctx, genCanv, "Generation");
+
+RenderStackedGraph(
+    grade_ctx,
+    gradeCanv,
+    [
+        grade0History,
+        grade1History,
+        grade2History,
+        grade3History,
+        grade4History
+    ],
+    {
+        smooth: false,
+
+        colors:
+        [
+            "#222222", // 0
+            "#4444ff", // 1
+            "#44aa44", // 2
+            "#ffaa44", // 3
+            "#ff4444"  // 4
+        ]
+    }
+);
+
+AddTitle(grade_ctx, gradeCanv, "Grades")
 }
 
 function PlotArray(array, color)
@@ -592,18 +625,41 @@ function RenderNodeGraph(ctx, canvas, history, options = {})
 
         ctx.beginPath();
 
-        for(let i = 0; i < history.length; i++)
+let ema = 0;
+
+        for (let i = 0; i < history.length; i++)
         {
-            let value = 0;
-            if(smooth)
+            let value;
+
+            if (smooth)
             {
-                    value =
-                        RollingAverage2D(
-                            history,
-                            i,
-                            node,
-                            10
+                const maxAlpha = 0.75;
+                const minAlpha = 0.005;
+
+                const raw = history[i][node];
+
+                if (i === 0)
+                {
+                    ema = raw;
+                }
+                else
+                {
+                    const previous = history[i - 1][node];
+
+                    let delta =
+                        Math.abs(raw - previous);
+
+                    const alpha =
+                        lerp(
+                            maxAlpha,
+                            minAlpha,
+                            clamp(delta / 1, 0, 1)
                         );
+
+                    ema = alpha * raw + (1 - alpha) * ema;
+                }
+
+                value = ema;
             }else{
                 value = history[i][node];
             }
@@ -632,6 +688,231 @@ function RenderNodeGraph(ctx, canvas, history, options = {})
     }
 
     ctx.lineWidth = 1;
+}
+
+function RenderStackedGraph(ctx, canvas, histories, options = {})
+{
+    //-----------------------------------
+    // OPTIONS
+    //-----------------------------------
+
+    const {
+        padding = 20,
+
+        clear = true,
+
+        smooth = false,
+
+        lineWidth = 1,
+
+        colors = [
+            "#222222",
+            "#4444ff",
+            "#44aa44",
+            "#ffaa44",
+            "#ff4444"
+        ],
+
+        normalize = true,
+
+        drawBounds = true
+    } = options;
+
+    //-----------------------------------
+    // SETUP
+    //-----------------------------------
+
+    const W = canvas.width;
+    const H = canvas.height;
+
+    if(clear)
+    {
+        ctx.clearRect(0,0,W,H);
+    }
+
+    if(histories.length === 0) return;
+    if(histories[0].length < 2) return;
+
+    const historyLength = histories[0].length;
+
+    const xScale =
+        (W - padding * 2) /
+        Math.max(1, historyLength - 1);
+
+    const graphHeight =
+        H - padding * 2;
+
+    //-----------------------------------
+    // GRID
+    //-----------------------------------
+
+    if(drawBounds)
+    {
+        ctx.strokeStyle = "rgba(0,0,0,0.2)";
+        ctx.lineWidth = 1;
+
+        for(let i = 0; i <= 4; i++)
+        {
+            const y =
+                H - padding -
+                (i / 4) * graphHeight;
+
+            ctx.beginPath();
+            ctx.moveTo(padding, y);
+            ctx.lineTo(W - padding, y);
+            ctx.stroke();
+        }
+    }
+
+    //-----------------------------------
+    // BUILD STACKED DATA
+    //-----------------------------------
+
+    const stacked = [];
+
+    for(let i = 0; i < historyLength; i++)
+    {
+        //-----------------------------------
+        // FIRST:
+        // get smoothed/raw values
+        //-----------------------------------
+
+        const values = [];
+
+        let total = 0;
+
+        for(let j = 0; j < histories.length; j++)
+        {
+            let value;
+
+            if(smooth)
+            {
+                value =
+                    RollingAverageIndexed(
+                        histories[j],
+                        5,
+                        i
+                    );
+            }
+            else
+            {
+                value = histories[j][i];
+            }
+
+            value = Math.max(0, value);
+
+            values.push(value);
+
+            total += value;
+        }
+
+        if(total <= 0) total = 1;
+
+        //-----------------------------------
+        // THEN normalize + accumulate
+        //-----------------------------------
+
+        let cumulative = 0;
+
+        stacked[i] = [];
+
+        for(let j = 0; j < histories.length; j++)
+        {
+            let value = values[j];
+
+            if(normalize)
+            {
+                value /= total;
+            }
+
+            cumulative += value;
+
+            stacked[i][j] = cumulative;
+        }
+    }
+
+    //-----------------------------------
+    // DRAW STACKS
+    //-----------------------------------
+
+    for(let layer = histories.length - 1; layer >= 0; layer--)
+    {
+        ctx.beginPath();
+
+        //-----------------------------------
+        // TOP EDGE
+        //-----------------------------------
+
+        for(let i = 0; i < historyLength; i++)
+        {
+            const x =
+                padding + i * xScale;
+
+            const value =
+                stacked[i][layer];
+
+            const y =
+                H - padding -
+                value * graphHeight;
+
+            if(i === 0)
+            {
+                ctx.moveTo(x, y);
+            }
+            else
+            {
+                ctx.lineTo(x, y);
+            }
+        }
+
+        //-----------------------------------
+        // BOTTOM EDGE
+        //-----------------------------------
+
+        for(let i = historyLength - 1; i >= 0; i--)
+        {
+            const x =
+                padding + i * xScale;
+
+            let value = 0;
+
+            if(layer > 0)
+            {
+                value =
+                    stacked[i][layer - 1];
+            }
+
+            const y =
+                H - padding -
+                value * graphHeight;
+
+            ctx.lineTo(x, y);
+        }
+
+        ctx.closePath();
+
+        //-----------------------------------
+        // FILL
+        //-----------------------------------
+
+        ctx.globalAlpha = 0.85;
+
+        ctx.fillStyle =
+            colors[layer % colors.length];
+
+        ctx.fill();
+
+        ctx.globalAlpha = 1;
+
+        //-----------------------------------
+        // OUTLINE
+        //-----------------------------------
+
+        ctx.strokeStyle = "rgba(0,0,0,0.15)";
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+    }
+
 }
 
 function AddTitle(ctx, canvas, title)
@@ -808,7 +1089,7 @@ function RenderInfoGraphs()
 
             colorFunction: (node, total) =>
             {
-                const hue = node % 2 === 0 ? 0 : 240;
+                const hue = node % 2 === 0 ? 240 : 0;
                 const value = (node - (node % 2)) / total * 50 + 25;
 
                 return `hsl(${hue},${value}%,${value}%)`;
@@ -1104,4 +1385,95 @@ function DrawObstacles()
     }
 
     ctx.fill();
+}
+
+function DrawHorizontalGrid(ctx, values, yScale)
+{
+    for(let v of values)
+    {
+        const y =
+            yShift +
+            genCanv.height +
+            (v * yScale);
+
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(genCanv.width, y);
+        ctx.stroke();
+    }
+}
+
+function DrawFlowField(
+    flowField,
+    width,
+    height,
+    cellSize,
+    fieldOriginX,
+    fieldOriginY,
+)
+{
+    const ctx = m_ctx;
+    ctx.save();
+    ctx.lineWidth = 1;
+
+    ctx.fillStyle = "red";
+    ctx.fillRect(
+        fieldOriginX * pixelsPerMeter,
+        canvas.height - fieldOriginY * pixelsPerMeter,
+        5, 5
+    );
+
+    ctx.fillStyle = "red";
+    ctx.fillRect(
+        0 * pixelsPerMeter,
+        0 * pixelsPerMeter,
+        5, 5
+    );
+
+    const scale = cellSize * pixelsPerMeter;
+
+    for (let y = 0; y < height; y++)
+    {
+        for (let x = 0; x < width; x++)
+        {
+            const i = (x + y * width) * 2;
+
+            const fx = flowField[i];
+            const fy = flowField[i + 1];
+
+            if (!Number.isFinite(fx) || !Number.isFinite(fy)) continue;
+
+            const mag = Math.hypot(fx, fy);
+            if (mag < 0.0001) continue;
+
+            const nx = fx / mag;
+            const ny = fy / mag;
+
+            const px =
+                (fieldOriginX + x * cellSize) * pixelsPerMeter;
+
+            const py =
+                0 -
+                (fieldOriginY + y * cellSize) * pixelsPerMeter;
+
+            const dx = nx * scale;
+            const dy = -ny * scale;
+
+            ctx.strokeStyle =
+                `rgba(${(fx + 1) * 127.5}, ${(fy + 1) * 127.5}, 0, 0.6)`;
+
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            ctx.lineTo(px + dx, py + dy);
+            ctx.stroke();
+
+            // arrow head
+            ctx.beginPath();
+            ctx.arc(px + dx, py + dy, 1.2, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${(fx + 1) * 127.5}, ${(fy + 1) * 127.5}, 0, 0.6)`;;
+            ctx.fill();
+        }
+    }
+
+    ctx.restore();
 }

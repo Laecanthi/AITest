@@ -26,6 +26,11 @@ class Agent /**************************** AGENT **************************/
 
     xLastExternalForce;
     yLastExternalForce;
+    aLastExternalForce;
+
+    engineOn
+    engineTimer
+    engineCooldown
 
     constructor (x, y, dm, fu, fm, f, t) // VALUES IN METERS
     {
@@ -55,6 +60,11 @@ class Agent /**************************** AGENT **************************/
 
         this.xLastExternalForce = 0;
         this.yLastExternalForce = 0;
+        this.aLastExternalForce = 0;
+
+        this.engineOn = false;
+        this.engineTimer = 0;
+        this.engineCooldown = 0;
     }
 }
 

@@ -1,5 +1,6 @@
 importScripts('sharedSimulation.js');
 importScripts('utils.js');
+importScripts('navigation.js');
 
 onmessage = function(event) {
     const {
@@ -11,7 +12,10 @@ onmessage = function(event) {
         thrustBurn, crashVelocity,
         curriculumStage, generationSeed,
         obsAmount, obsDensity,
-        networkShape 
+        networkShape,
+        flowField,
+        fieldWidth, fieldHeight, cellSize,
+        fieldOriginX, fieldOriginY
     } = event.data;
 
     // reconstruct full network objects with activation arrays
@@ -49,7 +53,9 @@ onmessage = function(event) {
         RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
                  thrustBurn, windForceX, windForceY, 
                  crashVelocity, curriculumStage,
-                 generationLength, scores, generationSeed, trajectory, trajectoryValue, obstacles);
+                 generationLength, scores, generationSeed, trajectory, trajectoryValue, obstacles,
+                 flowField, fieldWidth, fieldHeight, cellSize,
+                 fieldOriginX, fieldOriginY);
 
         //console.log(trajectory);
 

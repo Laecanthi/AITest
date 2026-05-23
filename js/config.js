@@ -42,6 +42,14 @@ var padding = 25;
 var yMaxValue = 1000;
 var xMinValue = 0;
 
+const gradeCanv = document.getElementById("grade-canvas");
+const grade_ctx = gradeCanv.getContext("2d");
+let grade0History = [];
+let grade1History = [];
+let grade2History = [];
+let grade3History = [];
+let grade4History = [];
+
 const pixelsPerMeter = 5;
 //const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
 //const lerp = (start, end, t) => start + (end - start) * t;
@@ -89,8 +97,8 @@ let ignoreStops = false;
     let lastTime = 0;
 
 var simPlay = false;
-var simSpeed = 5;
-var simSubsteps = 5;
+var simSpeed = 1;
+var simSubsteps = 2;
 
 var targetRadius = 1.5;
 var thrustBurn = 0;
@@ -111,6 +119,24 @@ var lastVerifiedGeneration = 0;
 let obstacles = [];
 var obsAmount = 15;
 var obsDensity = 25;
+
+let renderField = false;
+
+const fieldOriginX = -100;
+const fieldMaxX = 300;
+
+const fieldOriginY = -200;
+const fieldMaxY = 100;
+
+const cellSize = 1.5;
+const fieldWidth = Math.ceil(
+        (fieldMaxX - fieldOriginX) / cellSize
+    );
+const fieldHeight = Math.ceil(
+        (fieldMaxY - fieldOriginY) / cellSize
+    );
+let flowField = [];
+let flatFlowField = null;
 
 var inputLabels =
     [

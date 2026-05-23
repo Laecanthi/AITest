@@ -13,7 +13,7 @@ function ResetLayers(network)
     for (var node = 0; node < network.mb2.length; node++) {network.mb2[node] = 0;}
 }
 
-function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius, dt, generationSeed, curriculumStage, obstacles) 
+function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius, dt, generationSeed, curriculumStage, obstacles, flowField, fieldWidth, fieldHeight, cellSize, fieldOriginX, fieldOriginY) 
 {   
     const inputs = network.inputs;
     const cn1 = network.cn1;
@@ -40,10 +40,20 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius, dt,
     let memoryInstability = network.memoryInstability;
     const velocityDir = Math.atan2(agent.yVel, agent.xVel);
 
+
+    const fieldVector = SampleFlowField(agent.xPos, agent.yPos, flowField, cellSize, fieldWidth, fieldHeight, fieldOriginX, fieldOriginY);
+    const fieldDir = Math.atan2(fieldVector.y, fieldVector.x);
+
+    const fieldVelocityDifference = fieldDir - velocityDir;
+
+    const speed = Math.hypot(agent.xVel, agent.yVel);
+
     /**************************************** INPUTS ********************************/
 
-    inputs[0] = (targetX - agent.xPos) / 100; // difference X
-    inputs[1] = (GetGroundHeight(targetX, groundY, generationSeed, targetX, targetRadius, curriculumStage) - agent.yPos) / 100; // difference Y
+    //inputs[0] = (targetX - agent.xPos) / 100; // difference X
+    //inputs[1] = (GetGroundHeight(targetX, groundY, generationSeed, targetX, targetRadius, curriculumStage) - agent.yPos) / 100; // difference Y
+    inputs[0] = Math.sin(fieldVelocityDifference);
+    inputs[1] = Math.cos(fieldVelocityDifference);
     inputs[2] = (agent.yPos + 60) / 100; // y pos
     inputs[3] = (agent.xPos - 80) / 100; // x pos
     inputs[4] = Math.sin(agent.angle);
@@ -58,6 +68,8 @@ function UpdateNeuralNetwork(network, agent, targetX, groundY, targetRadius, dt,
     inputs[12] = RaycastStep(agent.xPos, agent.yPos, agent.angle, 25, obstacles, groundY, generationSeed, targetX, targetRadius, curriculumStage);
     inputs[13] = RaycastStep(agent.xPos, agent.yPos, velocityDir, 25, obstacles, groundY, generationSeed, targetX, targetRadius, curriculumStage);
     inputs[14] = RaycastStep(agent.xPos, agent.yPos, -Math.PI / 2, 25, obstacles, groundY, generationSeed, targetX, targetRadius, curriculumStage);
+
+    inputs[15] = speed / 25;
 
     // end of inputs
 
@@ -284,13 +296,54 @@ function UpdateAgent(agent, dt, thrustBurn, minThrust, windForceX, windForceY, c
         generationSeed
     );
 
-    localWindMagnitude *= Amplify(windNoise) + 0.5; // wind tends to be near an extreme, and is more
+    localWindMagnitude *= Amplify(windNoise) + 0.5; // wind tends to be near an extreme, and is more inclined to go in the same direction
+
+    const windX = windForceX * localWindMagnitude;
+    const windY = windForceY * localWindMagnitude;
+
+    // wind direction
+    const windAngle = Math.atan2(windY, windX);
+
+    // how aligned is agent facing with wind?
+    const windFacing = Math.sin(windAngle - agent.angle);
+
+    // perpendicular "broadside" exposure
+    const windSide = Math.cos(windAngle - agent.angle);
+
+    // torque from wind (dominantly side-on)
+    const windTorque =
+        windSide *
+        (Math.hypot(windX, windY)) *
+        0.002; // tuning constant
+
+
+
+
+    const velAngle = Math.atan2(agent.yVel, agent.xVel);
+
+    // difference between facing direction and movement direction
+    let velDiff = velAngle - agent.angle;
+
+    // normalize angle to [-pi, pi]
+    velDiff = Math.atan2(Math.sin(velDiff), Math.cos(velDiff));
+
+    // magnitude of velocity (ignore mass, just shape stability)
+    const speed = Math.hypot(agent.xVel, agent.yVel);
+
+    // alignment strength (tune this!)
+    const alignmentTorque =
+        velDiff *
+        speed *
+        0.0008; // small but persistent correction
+
+    var aExternalForce = windTorque - alignmentTorque;
 
     xExternalForce += windForceX * localWindMagnitude;
     yExternalForce += windForceY * localWindMagnitude;
 
     agent.xLastExternalForce = xExternalForce;
     agent.yLastExternalForce = yExternalForce;
+    agent.aLastExternalForce = aExternalForce;
 
     agent.xAcc = actualThrust * Math.cos(agent.angle) * agent.fThrust;
     agent.yAcc = actualThrust * Math.sin(agent.angle) * agent.fThrust;
@@ -301,13 +354,15 @@ function UpdateAgent(agent, dt, thrustBurn, minThrust, windForceX, windForceY, c
     agent.xAcc /= agent.mass;
     agent.yAcc /= agent.mass;
 
-    agent.aAcc = actualRotation * agent.torque / agent.mass;
+    agent.aAcc =
+        actualRotation * agent.torque / agent.mass
+        + aExternalForce;
 
     agent.yAcc -= 9.8;
 
     agent.xVel *= 0.999;
     agent.yVel *= 0.999;
-    agent.aVel *= 0.98;
+    agent.aVel *= 0.985;
 
     agent.xVel += agent.xAcc * dt;
     agent.yVel += agent.yAcc * dt;
@@ -336,7 +391,9 @@ function CurriculumBlend(array, stage = curriculumStage) {
 function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
                  thrustBurn, windForceX, windForceY, 
                  crashVelocity, curriculumStage,
-                 generationLength, scores, generationSeed, traj, trajVal, obstacles)
+                 generationLength, scores, generationSeed, traj, trajVal, obstacles,
+                 flowField, fieldWidth, fieldHeight, cellSize,
+                 fieldOriginX, fieldOriginY)
 {
     for(let i = 0; i < agents.length; i++)
     {
@@ -346,12 +403,15 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
         var lastThrust = agents[i].thrust;
 
         UpdateNeuralNetwork(networks[i], agents[i],
-                           targetX, groundY, targetRadius, dt, generationSeed, curriculumStage, obstacles);
+                           targetX, groundY, targetRadius, dt, generationSeed, curriculumStage, obstacles,
+                           flowField, fieldWidth, fieldHeight, cellSize, fieldOriginX, fieldOriginY);
 
         const minThrust = 0.4;
         const deadzone = 0.02;
+        const spoolUpRate = 4.5;
+        const spoolDownRate = 7.0;
 
-        let targetRotation = networks[i].outputs[0];
+        /*let targetRotation = networks[i].outputs[0];
         let targetThrust = networks[i].outputs[1];
         if(targetThrust < 0)
         {
@@ -366,9 +426,95 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
             targetRotation = 0;
         }
 
-        agents[i].rotation = LinearTargetChange(agents[i].rotation, targetRotation, dt * 8);    
+        agents[i].rotation = LinearTargetChange(agents[i].rotation, targetRotation, dt * 8);*/
 
-        UpdateAgent(agents[i], dt, thrustBurn, minThrust, windForceX, windForceY, crashVelocity, time, generationSeed);
+        const rotationCommand = networks[i].outputs[0];
+        const engineCommand = networks[i].outputs[1];
+
+        const agent = agents[i];
+
+        // ENGINE STATE MACHINE
+
+        if(agent.engineCooldown > 0)
+        {
+            agent.engineCooldown -= dt;
+        }
+
+        if(!agent.engineOn)
+        {
+            // request ignition
+            if(engineCommand > 0 && agent.engineCooldown <= 0)
+            {
+                agent.engineTimer += dt;
+
+                // ignition takes time
+                if(agent.engineTimer >= 0.25)
+                {
+                    agent.engineOn = true;
+                    agent.engineTimer = 0;
+                }
+            }else{
+                agent.engineTimer = 0;
+            }
+        }else{
+            // request shutdown
+            if(engineCommand <= 0)
+            {
+                agent.engineTimer += dt;
+
+                // shutdown takes time
+                if(agent.engineTimer >= 0.15)
+                {
+                    agent.engineOn = false;
+                    agent.engineTimer = 0;
+
+                    agent.engineCooldown = 0.75;
+                }
+            }
+            else
+            {
+                agent.engineTimer = 0;
+            }
+        }
+
+        let targetThrust = 0;
+
+        if(agent.engineOn) // if the entine is on, the target thrust is then between the minimum thrust and 1
+        {
+            targetThrust =
+                lerp(minThrust, 1,
+                    clamp(engineCommand, 0, 1));
+        }
+
+        if(targetThrust > agent.thrust)
+        {
+            agent.thrust =
+                LinearTargetChange(
+                    agent.thrust,
+                    targetThrust,
+                    dt * spoolUpRate
+                );
+        }
+        else
+        {
+            agent.thrust =
+                LinearTargetChange(
+                    agent.thrust,
+                    targetThrust,
+                    dt * spoolDownRate
+                );
+        }
+
+        if(Math.abs(rotationCommand) > deadzone)
+        {
+            agent.rotation = LinearTargetChange(agent.rotation, rotationCommand, dt * 7);
+        }else{
+            agent.rotation = LinearTargetChange(agent.rotation, 0, dt * 7);
+        }
+
+        
+
+        UpdateAgent(agent, dt, thrustBurn, minThrust, windForceX, windForceY, crashVelocity, time, generationSeed);
 
         if (CollideAnything(
                 agents[i].xPos,
@@ -438,7 +584,8 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
             conditionsHistory.push([
                 agents[i].fuel / 250 - 1,
                 agents[i].xLastExternalForce / 10,
-                agents[i].yLastExternalForce / 10
+                agents[i].yLastExternalForce / 10,
+                agents[i].aExternalForce,
             ]);
 
             // EVENTS

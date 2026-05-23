@@ -150,6 +150,24 @@ function SetNextGen(initialize = false)
     globalWindMagnitude = Math.random() * CurriculumBlend([0,1,2.5,5,15]);
     windForceY = Math.sin(windDirection) * globalWindMagnitude;
     windForceX = Math.cos(windDirection) * globalWindMagnitude;
+
+    flowField = CreateFlowField(
+        fieldWidth,
+        fieldHeight,
+        cellSize,
+        targetX,
+        groundY,
+        generationSeed,
+        targetRadius,
+        curriculumStage,
+        obstacles,
+        fieldOriginX,
+        fieldOriginY
+    );
+    flowField = SmoothFlowField(flowField, fieldWidth, fieldHeight);
+    flowField = GaussianSmoothFlowField(flowField, fieldWidth, fieldHeight, 4, 2);
+    flatFlowField = new Float32Array(FlattenFlowField(flowField));
+    //console.log(flowField);
 }
 
 function update(dt) /***************************** UPDATE ******************************/
@@ -160,7 +178,9 @@ function update(dt) /***************************** UPDATE **********************
     RunStep(agents, neuralNetworks, targetX, groundY, targetRadius, dt, time,
                  thrustBurn, windForceX, windForceY, 
                  crashVelocity, curriculumStage,
-                 generationLength, scores, generationSeed, trajectory, trajectoryValue, obstacles);
+                 generationLength, scores, generationSeed, trajectory, trajectoryValue, obstacles,
+                 flatFlowField, fieldWidth, fieldHeight, cellSize,
+                 fieldOriginX, fieldOriginY);
 
     
 }

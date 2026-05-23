@@ -44,9 +44,9 @@
 
                                    Substeps:
                                    <input type="range" id="substepSlider"
-                                          min="1" max="10" value="5">
+                                          min="1" max="10" value="2">
 
-                                   <span id="substepLabel">5</span>
+                                   <span id="substepLabel">2</span>
 
                                    <br>
 
@@ -61,6 +61,11 @@
                                           min="0" max="100" value="50">
 
                                    <span id="nonLeaderOpacityLabel">0.50</span>
+
+                                   <br>
+
+                                   Render Flow Field:
+                                   <input type="checkbox" id="renderFieldCheckbox">
 
                                    <br>
 
@@ -85,6 +90,8 @@
 
                      <br>
 
+                     <canvas id="grade-canvas" class="graph wide" width="1620" height="200"></canvas>
+
                      <canvas id="memory-canvas" class="graph wide" width="1620" height="200"></canvas>
 
                      <canvas id="output-canvas" class="graph wide" width="1620" height="200"></canvas>
@@ -102,6 +109,7 @@
 </html>
 <script src="js/config.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/navigation.js"></script>
 <script src="js/sharedSimulation.js"></script>
 <script src="js/agent.js"></script>
 <script src="js/network.js"></script>
