@@ -106,7 +106,7 @@ var globalWindMagnitude = 0;
 var windForceX = 0;
 var windForceY = 0;
 
-var curriculumStage = 10;
+var curriculumStage = 0;
 var retryCount = 0;
 var retrySign = 0;
 var retryFlipCount = 0;
@@ -114,7 +114,7 @@ var lastVerifiedGeneration = 0;
 
 var passRate = 0;
 var highestPassRateDuringCurriculum = 0;
-var curriculumCap = 10.999; //just below zero so that it can't start the next curriculum without increasing the cap
+var curriculumCap = 0.999; //just below zero so that it can't start the next curriculum without increasing the cap
 var capTimer = 50;
 
 let obstacles = [];
