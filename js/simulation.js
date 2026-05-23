@@ -164,8 +164,6 @@ function SetNextGen(initialize = false)
         fieldOriginX,
         fieldOriginY
     );
-    flowField = SmoothFlowField(flowField, fieldWidth, fieldHeight);
-    flowField = GaussianSmoothFlowField(flowField, fieldWidth, fieldHeight, 4, 2);
     flatFlowField = new Float32Array(FlattenFlowField(flowField));
     //console.log(flowField);
 }

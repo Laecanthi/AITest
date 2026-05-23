@@ -895,12 +895,20 @@ function GetGroundHeight(x, y, generationSeed, targetX, targetRadius, curriculum
 function generateObstacles(amount, density, seed, curriculumStage, targetX, targetY) {
     const obstacles = [];
 
-    if(curriculumStage >= 1) obstacles.push({x: targetX - 5, y: targetY + 15, w: 10, h: 2.5}); // starting at curriculum stage 1, agents now have to go around an obstacle
+    let testDifficultScene = false;
 
-    if(curriculumStage >= 1.5) // starting halfway through curriculum stage 1, agents can no longer hug the ground and thus must actually learn to avoid obstacles
+    if(curriculumStage >= 1 || testDifficultScene) obstacles.push({x: targetX - 5, y: targetY + 15, w: 10, h: 2.5}); // starting at curriculum stage 1, agents now have to go around an obstacle
+
+    if(curriculumStage >= 1.5 || testDifficultScene) // starting halfway through curriculum stage 1, agents can no longer hug the ground and thus must actually learn to avoid obstacles
     {
         obstacles.push({x: targetX + 7.5, y: targetY - 5, w: 2.5, h: 7.5});
         obstacles.push({x: targetX - 10, y: targetY - 5, w: 2.5, h: 7.5});
+    }
+
+    if(testDifficultScene)
+    {
+        amount = 15;
+        density = 15;
     }
     
 

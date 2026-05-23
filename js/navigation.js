@@ -1,7 +1,7 @@
 const costArray = [
     1.914, 1.5, 1.914,
-    1, 0, 1,
-    0.914, 0.5, 0.914
+    0.9, 0, 0.9,
+    0.914, 0.45, 0.914
 ]; // arbitrary numbers that make going up more difficult, and going down very easy
 
 // default:
@@ -379,7 +379,17 @@ function CreateFlowField(
 
     const costField = BuildCostField(collisionGrid, targetX, targetY, fieldOriginX, fieldOriginY, cellSize);
 
-    return BuildFlowFieldFromCost(costField, collisionGrid);
+    let flowField = BuildFlowFieldFromCost(costField, collisionGrid);
+
+    flowField = SmoothFlowFieldStructured(flowField, collisionGrid, fieldWidth, fieldHeight, 3, 1.5, 0.15);
+
+    flowField = FillInvalidFlowCells(flowField, collisionGrid, width, height);
+
+    flowField = SmoothFlowFieldStructured(flowField, collisionGrid, fieldWidth, fieldHeight, 4, 2, 0.65);
+
+    //flowField = SmoothFlowField(flowField, width, height);
+
+    return flowField;
 }
 
 function FlattenFlowField(flowField)
@@ -513,6 +523,97 @@ function GaussianSmoothFlowField(flowField, width, height, radius, sigma)
     return out;
 }
 
+function SmoothFlowFieldStructured(
+    flowField,
+    collisionGrid,
+    width,
+    height,
+    radius,
+    sigma,
+    angleThreshold = 0.6
+)
+{
+    const out = Array.from({ length: width }, () =>
+        Array.from({ length: height }, () => ({ x: 0, y: 0 }))
+    );
+
+    const sigma2 = sigma * sigma;
+    const twoSigma2 = 2 * sigma2;
+
+    for (let x = 0; x < width; x++)
+    for (let y = 0; y < height; y++)
+    {
+        const center = flowField[x][y];
+
+        let sumX = 0;
+        let sumY = 0;
+        let sumW = 0;
+
+        const cmag = Math.hypot(center.x, center.y) || 1;
+        const cx = center.x / cmag;
+        const cy = center.y / cmag;
+
+        for (let dx = -radius; dx <= radius; dx++)
+        for (let dy = -radius; dy <= radius; dy++)
+        {
+            const nx = x + dx;
+            const ny = y + dy;
+
+            if (
+                nx < 0 || ny < 0 ||
+                nx >= width || ny >= height
+            ) continue;
+
+            if (collisionGrid[nx][ny]) continue;
+
+            const v = flowField[nx][ny];
+            const mag = Math.hypot(v.x, v.y);
+
+            if (mag === 0) continue;
+
+            const vx = v.x / mag;
+            const vy = v.y / mag;
+
+            // -----------------------------
+            // ANGLE FILTER (key feature)
+            // -----------------------------
+            const dot = cx * vx + cy * vy;
+
+            if (dot < angleThreshold) continue;
+
+            // -----------------------------
+            // GAUSSIAN WEIGHT
+            // -----------------------------
+            const dist2 = dx * dx + dy * dy;
+            const w = Math.exp(-dist2 / twoSigma2);
+
+            sumX += vx * w;
+            sumY += vy * w;
+            sumW += w;
+        }
+
+        if (sumW > 0)
+        {
+            sumX /= sumW;
+            sumY /= sumW;
+
+            const mag = Math.hypot(sumX, sumY) || 1;
+
+            out[x][y] = {
+                x: sumX / mag,
+                y: sumY / mag
+            };
+        }
+        else
+        {
+            // fallback: keep original direction
+            out[x][y] = center;
+        }
+    }
+
+    return out;
+}
+
 function BuildCostField(collisionGrid, targetX, targetY, originX, originY, cellSize)
 {
     const W = collisionGrid.length;
@@ -623,4 +724,61 @@ function BuildFlowFieldFromCost(cost, collisionGrid)
     }
 
     return flow;
+}
+
+function FillInvalidFlowCells(flowField, collisionGrid, width, height)
+{
+    const out = flowField;
+
+    const DIRS = [
+        [1,0], [-1,0], [0,1], [0,-1],
+        [1,1], [1,-1], [-1,1], [-1,-1]
+    ];
+
+    for (let x = 0; x < width; x++)
+    for (let y = 0; y < height; y++)
+    {
+        if (!collisionGrid[x][y]) continue;
+
+        // this cell is invalid → replace it
+
+        let found = false;
+
+        for (let r = 1; r <= 3 && !found; r++)
+        {
+            for (const [dx, dy] of DIRS)
+            {
+                const nx = x + dx * r;
+                const ny = y + dy * r;
+
+                if (
+                    nx < 0 || ny < 0 ||
+                    nx >= width || ny >= height
+                ) continue;
+
+                if (collisionGrid[nx][ny]) continue;
+
+                const v = flowField[nx][ny];
+
+                const mag = Math.hypot(v.x, v.y);
+                if (!mag) continue;
+
+                out[x][y] = {
+                    x: v.x / mag,
+                    y: v.y / mag
+                };
+
+                found = true;
+                break;
+            }
+        }
+
+        // fallback: if absolutely nothing found
+        if (!found)
+        {
+            out[x][y] = { x: 0, y: 0 };
+        }
+    }
+
+    return out;
 }
