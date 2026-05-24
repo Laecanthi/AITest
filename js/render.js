@@ -4,22 +4,22 @@ function render()
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    DrawObstacles();
-
-    DrawGround();
-
     if(renderField)
     {
-        DrawDistanceField(
+        /*DrawDistanceField(
             distanceField,
             fieldWidth,
             fieldHeight,
             cellSize,
             fieldOriginX,
             fieldOriginY
-        );
+        );*/
+        ctx.putImageData(distanceFieldTexture, 0, 0);
     }
-    
+
+    DrawObstacles();
+
+    DrawGround();
 
     if(!showOnlyLeader)
     {
@@ -77,6 +77,11 @@ function UnrenderedSnapshot()
     const ctx = m_ctx;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if(renderField)
+    {
+        ctx.putImageData(distanceFieldTexture, 0, 0);
+    }
 
     DrawObstacles();
 
@@ -1587,4 +1592,43 @@ function DrawDistanceField(
     }
 
     ctx.restore();
+}
+
+function BakeFlowTexture(flowField, width, height)
+{
+    const img = new ImageData(width, height);
+    const data = img.data;
+
+    let i = 0;
+
+    for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++)
+    {
+        const wx = x / pixelsPerMeter
+        const wy = -y / pixelsPerMeter
+
+        const v = SampleFlowGradient(
+                wx,
+                wy,
+                flowField,
+                fieldWidth,
+                fieldHeight,
+                cellSize,
+                fieldOriginX,
+                fieldOriginY
+            );
+
+        const vx = v.x;
+        const vy = v.y;
+
+        const r = (vx * 0.5 + 0.5) * 255;
+        const g = (vy * 0.5 + 0.5) * 255;
+
+        data[i++] = r;
+        data[i++] = g;
+        data[i++] = 0;
+        data[i++] = 155;
+    }
+
+    return img;
 }

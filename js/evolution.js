@@ -1,14 +1,66 @@
+let speciesCount = 5;
+let threshold = 1;
+const targetSpeciesCount = 5;
+
 function MutateNextGen() /**************************************** NEXT GENERATION *********************************/
 {
 
     if(generation <= 0) {
-    generation = 0;
-    retryCount = 0;
-    retryFlipCount = 0;
+        generation = 0;
+        retryCount = 0;
+        retryFlipCount = 0;
     }
 
+    let networkVectors = [];
+
+    for(let i = 0; i < neuralNetworks.length; i++)
+    {
+        const nodeGroups = NetworkToNodeGroups(neuralNetworks[i]);
+        networkVectors.push(NodeGroupsToVector(nodeGroups));
+    }
+
+    if(speciesCount < targetSpeciesCount)
+    {
+        threshold -= 0.01;
+    }else{
+        threshold += 0.01;
+    }
+
+
+    let species = [];
+    let speciesIDs = [];
+
+    species.push(networkVectors[0]); // arbitrarily lets the first network create it's own species (which is previous generation's leader)
+    speciesIDs.push(0);
+
+    for(let i = 1; i < networkVectors.length; i++)
+    {
+        let speciesID = null;
+        let lowestDistance = Infinity;
+
+        for(let s = 0; s < species.length; s++)
+        {
+            const distance = VectorDistance(networkVectors[i], species[s]);
+            if(distance < threshold && distance < lowestDistance) // I'm just making up a number here
+            {
+                speciesID = s;
+                lowestDistance = distance;
+            }
+        }
+
+        if(speciesID === null) // add new species
+        {
+            speciesIDs.push(species.length); // this first so that it's not off by one
+            species.push(networkVectors[i]);
+        }else{
+            speciesIDs.push(speciesID); // add to existing species
+        }
+    }
+
+    speciesCount = species.length;
+
     population = neuralNetworks.map((network, index) => {
-    return { network: network, score: scores[index] - (grades[index] * 250), rawScore: scores[index], grade: grades[index] }; // agents are given an addition 1000 reward for its grade
+    return { network: network, score: scores[index] - (grades[index] * 250), rawScore: scores[index], grade: grades[index], species: speciesIDs[index] }; // agents are given an addition 1000 reward for its grade
     });
 
     population.sort((a, b) => a.score - b.score);
@@ -188,23 +240,172 @@ function MutateNextGen() /**************************************** NEXT GENERATI
 
     survivors.push(...maxGradeAgents);
 
-    while (nextGeneration.length < amountOfAgents)
+    const speciesBuckets = Array.from(
+        { length: speciesCount },
+        () => []
+    );
+
+    for (const agent of survivors)
     {
-        if(Math.random() < 0.3) {
+        if (!agent || !agent.network)
+        {
+            console.warn("Invalid agent in survivors:", agent);
+            continue;
+        }
+
+        const s = agent.species;
+
+        if (s === undefined || s < 0 || s >= speciesCount)
+        {
+            console.warn("Bad species index:", s, agent);
+            continue;
+        }
+
+        speciesBuckets[s].push(agent);
+    }
+
+    let speciesFitness = [];
+
+    for(let s = 0; s < speciesCount; s++)
+    {
+        const speciesBucket = speciesBuckets[s];
+        const length = speciesBucket.length;
+        let sum = 0;
+
+        if(length === 0)
+        {
+            speciesFitness.push(Infinity);
+            continue;
+        }
+
+        for(let i = 0; i < length; i++)
+        {
+            sum += speciesBucket[i].score;
+        }
+
+        sum /= length;
+        speciesFitness.push(sum);
+    }
+
+    const speciesRank = new Array(speciesCount);
+
+    sortedSpecies = speciesFitness.map((score, index) => {
+        return { score: score, species: index };
+    });
+
+    sortedSpecies.sort((a, b) => a.score - b.score);
+
+    for(let rank = 0; rank < sortedSpecies.length; rank++)
+    {
+        const speciesID = sortedSpecies[rank].species;
+
+        speciesRank[speciesID] = rank;
+    }
+
+    const offspringRoom = amountOfAgents - nextGeneration.length;
+    const allocatedOffsprings = new Array(speciesCount).fill(0);
+
+    let totalWeight = 0;
+
+    // better rank = bigger weight
+
+    const activeSpecies = []; // deactivate species that are empty
+    let deactivated = 0;
+
+    for (let s = 0; s < speciesCount; s++)
+    {
+        if (speciesBuckets[s].length > 0)
+        {
+            totalWeight += speciesCount - speciesRank[s];
+            activeSpecies.push(s);
+        }
+        else
+        {
+            deactivated++;
+            speciesRank[s] = Infinity;
+        }
+    }
+
+    // allocate proportionally
+    let allocatedTotal = 0;
+
+    for(let s = 0; s < speciesCount; s++)
+    {
+        if(speciesRank[s] === Infinity) continue;
+        const weight = (speciesCount) - speciesRank[s];
+
+        const offspringCount =
+            Math.floor(
+                (weight / totalWeight) *
+                offspringRoom
+            );
+
+        allocatedOffsprings[s] = offspringCount;
+
+        allocatedTotal += offspringCount;
+    }
+
+    // distribute leftovers
+    while(allocatedTotal < offspringRoom)
+    {
+        // give leftovers to best species first
+        for(let s = 0; s < speciesCount; s++)
+        {
+            if(allocatedTotal >= offspringRoom)
+            {
+                break;
+            }
+
+            if(speciesRank[s] === 0)
+            {
+                allocatedOffsprings[s]++;
+                allocatedTotal++;
+            }
+        }
+    }
+
+    /*while (nextGeneration.length < amountOfAgents)
+    {
+
+    }*/
+
+    for(let s = 0; s < speciesCount; s++)
+    {
+        if(speciesBuckets[s].length === 0) continue;
+
+        for(let i = 0; i < allocatedOffsprings[s]; i++)
+        {
+            //console.log(speciesBuckets[s]);
+            nextGeneration.push(CreateOffspringFromPool(speciesBuckets[s], nextGeneration.length));
+        }
+    }
+
+    if(nextGeneration.length != amountOfAgents)
+    {
+        console.error("Generation population mismatch!", nextGeneration.length)
+    }
+
+    neuralNetworks = nextGeneration;
+    
+}
+
+function CreateOffspringFromPool(pool, i)
+{
+            if(Math.random() < 0.3) {
             // clone + mutate single parent
-            let parent = TournamentSelect(survivors);
+            let parent = TournamentSelect(pool);
             var percentile = population.indexOf(parent);
             percentile /= survivors.length;
             let child = NudgeNetwork(CloneNetwork(parent.network), percentile);
 
-            child.i = nextGeneration.length;
+            child.i = i;
             child.id = child.id + child.i;
 
-            nextGeneration.push(child);
+            return child;
         } else {
             // normal crossover
-            let parentA = TournamentSelect(survivors);
-            let parentB = TournamentSelect(survivors);
+            let parentA = TournamentSelect(pool);
+            let parentB = TournamentSelect(pool);
 
             var percentile = population.indexOf(parentA) + population.indexOf(parentB);
             percentile /= 2 * survivors.length;
@@ -213,15 +414,11 @@ function MutateNextGen() /**************************************** NEXT GENERATI
 
             child = NudgeNetwork(child, percentile);
 
-            child.i = nextGeneration.length;
+            child.i = i;
             child.id = child.id + child.i;
 
-            nextGeneration.push(child);
+            return child;
         }
-    }
-
-    neuralNetworks = nextGeneration;
-    
 }
 
 function TournamentSelect(population)

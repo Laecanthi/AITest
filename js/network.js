@@ -53,161 +53,6 @@ class NeuralNetwork
     }
 }
 
-/*function UpdateNeuralNetwork(network, agent)
-{   
-    const inputs = network.inputs;
-    const cn1 = network.cn1;
-    const cn2 = network.cn2;
-    const cn3 = network.cn3;
-    const hl1 = network.hl1;
-    const hl2 = network.hl2;
-    const bs1 = network.bs1;
-    const bs2 = network.bs2;
-    const bs3 = network.bs3;
-    const mb1 = network.mb1;
-    const mb2 = network.mb2;
-    const outputs = network.outputs;
-
-    const inputsLen = inputs.length;
-    const hl1Len = hl1.length;
-    const hl2Len = hl2.length;
-    const outputsLen = outputs.length;
-    const mb1Len = mb1.length;
-    const mb2Len = mb2.length;
-    const totalOutputs = outputsLen + mb1Len + mb2Len;
-
-    let dx = targets[agent.targetID].X - agent.xPos;
-    let dy = targets[agent.targetID].Y - agent.yPos;
-    let dist = Math.sqrt(
-        dx*dx +
-        dy*dy
-    );
-
-    /**************************************** INPUTS ********************************/
-
-    /*inputs[0] = (targets[agent.targetID].X - agent.xPos) / 100;
-    inputs[1] = (targets[agent.targetID].Y - agent.yPos) / 100;
-    inputs[2] = Math.sin(agent.angle);
-    inputs[3] = Math.cos(agent.angle);
-    inputs[4] = (dist - targetRadius) / targetRadius;
-    inputs[5] = (agent.xVel) / 25;
-    inputs[6] = (agent.yVel) / 25;
-    inputs[7] = (agent.aVel) * 5;
-    inputs[8] = agent.fuel / 500;
-    inputs[9] = (agent.yPos + 60) / 100;
-    inputs[10] = (agent.xPos) / 100;
-    inputs[11] = agent.xLastExternalForce / 10;
-    inputs[12] = agent.yLastExternalForce / 10;
-
-    if(agent.targetID + 1 < targets.length)
-    {
-        inputs[13] = (targets[agent.targetID + 1].X - agent.xPos) / 100;
-        inputs[14] = (targets[agent.targetID + 1].Y - agent.yPos) / 100;
-    }else{
-        inputs[13] = (nextMovingTargetX - agent.xPos) / 100;
-        inputs[14] = (nextMovingTargetY - agent.yPos) / 100;
-    }
-
-    // end of inputs
-
-    //update hl1
-
-    for (var hl1Node = 0; hl1Node < hl1Len; hl1Node++)
-    {
-        let sum = bs1[hl1Node];
-
-        for (var inputNode = 0; inputNode < inputsLen; inputNode++) // inputs
-        {
-            var connection = (inputNode * hl1Len) + hl1Node;
-            sum += inputs[inputNode] * cn1[connection];
-        }
-
-        for (var mb1Node = 0; mb1Node < mb1Len; mb1Node++) // mb1
-        {
-            var connection = ((mb1Node + inputsLen) * hl1Len) + hl1Node;
-            sum += mb1[mb1Node] * cn1[connection];
-        }
-
-        for (var mb2Node = 0; mb2Node < mb2Len; mb2Node++) // mb2
-        {
-            var connection = ((mb2Node + mb1Len + inputsLen) * hl1Len) + hl1Node;
-            sum += mb2[mb2Node] * cn1[connection];
-        }
-
-        hl1[hl1Node] = SoftClamp(sum);
-    }
-
-    //update hl2
-
-    for (var hl2Node = 0; hl2Node < hl2Len; hl2Node++)
-    {
-        let sum = bs2[hl2Node];
-
-        for (var hl1Node = 0; hl1Node < hl1Len; hl1Node++)
-        {
-            var connection = (hl1Node * hl2Len) + hl2Node;
-            sum += hl1[hl1Node] * cn2[connection];
-        }
-
-        hl2[hl2Node] = SoftClamp(sum);
-    }
-
-    //update outputs
-
-    for (var outputNode = 0; outputNode < outputsLen; outputNode++)
-    {
-        let sum = bs3[outputNode];
-
-        for (var hl2Node = 0; hl2Node < hl2Len; hl2Node++)
-        {
-            var connection = (hl2Node * totalOutputs) + outputNode;
-            sum += hl2[hl2Node] * cn3[connection];
-        }
-
-        outputs[outputNode] = SoftClamp(sum);
-    }
-
-    // update mb1: overwrite buffer
-    for (var mb1Node = 0; mb1Node < mb1Len; mb1Node++)
-    {
-        let sum = bs3[mb1Node + outputsLen];
-
-        for (var hl2Node = 0; hl2Node < hl2Len; hl2Node++)
-        {
-            var connection = (hl2Node * totalOutputs) + mb1Node + outputsLen;
-            sum += hl2[hl2Node] * cn3[connection];
-        }
-
-        mb1[mb1Node] = SoftClamp(sum);
-    }
-
-    // update mb2: persistent buffer
-    for (var mb2Node = 0; mb2Node < mb2Len; mb2Node++)
-    {
-        let sum = bs3[mb2Node + outputsLen + mb1Len];
-
-        for (var hl2Node = 0; hl2Node < hl2Len; hl2Node++)
-        {
-            var connection = (hl2Node * totalOutputs) + mb2Node + outputsLen + mb1Len;
-            sum += hl2[hl2Node] * cn3[connection];
-        }
-
-        if(!isFinite(sum))
-        {
-            console.log("error: mb2 node sum is not finite");
-            sum = 0;
-        }
-
-        const bufferPersistence = 0.05;
-
-        mb2[mb2Node] =
-            SoftClamp(
-                mb2[mb2Node] * (1 - bufferPersistence) +
-                sum * bufferPersistence
-            );
-    }
-}*/
-
 function CloneNetwork(network)
 {
     //console.log(network);
@@ -233,12 +78,360 @@ function CloneNetwork(network)
     return newNetwork;
 }
 
-/*function ResetLayers(network)
+class NodeGroup
 {
-    for (var node = 0; node < network.inputs.length; node++) {network.inputs[node] = 0;}
-    for (var node = 0; node < network.hl1.length; node++) {network.hl1[node] = 0;}
-    for (var node = 0; node < network.hl2.length; node++) {network.hl2[node] = 0;}
-    for (var node = 0; node < network.outputs.length; node++) {network.outputs[node] = 0;}
-    for (var node = 0; node < network.mb1.length; node++) {network.mb1[node] = 0;}
-    for (var node = 0; node < network.mb2.length; node++) {network.mb2[node] = 0;}
-}*/
+    // biases
+
+    biasMean
+    biasMagnitude
+    biasDeviation
+    biasSign
+
+    // weights
+
+    weightMean
+    weightMagnitude
+    weightDeviation
+    weightSign
+
+    // metadata
+
+    nodeCount
+    connectionCount
+
+    constructor (biases, weights)
+    {
+        const biasBreakdown = GetArrayBreakdown(biases);
+
+        this.biasMean = biasBreakdown.mean;
+        this.biasMagnitude = biasBreakdown.magnitude;
+        this.biasDeviation = biasBreakdown.deviation;
+        this.biasSign = biasBreakdown.sign;
+
+        const weightBreakdown = GetArrayBreakdown(weights)
+
+        this.weightMean = weightBreakdown.mean;
+        this.weightMagnitude = weightBreakdown.magnitude;
+        this.weightDeviation = weightBreakdown.deviation;
+        this.weightSign = weightBreakdown.sign;
+
+        this.nodeCount = biases.length;
+        this.connectionCount = weights.length;
+    }
+}
+
+function GetArrayBreakdown(array)
+{
+    if(array.length === 0)
+    {
+        console.error("No array to break down!")
+        return {
+            mean: 0,
+            magnitude: 0,
+            deviation: 0,
+            sign: 0
+        };
+    }
+
+    const length = array.length;
+    let mean = 0;
+    let magnitude = 0;
+    let deviation = 0;
+    let sign = 0;
+
+    for(let i = 0; i < length; i++)
+    {
+        const v = array[i];
+        mean += v;
+        magnitude += Math.abs(v);
+        sign += Math.sign(v);
+    }
+
+    mean /= length;
+    magnitude /= length;
+    sign /= length;
+
+    for(let i = 0; i < length; i++)
+    {
+        const v = array[i];
+        const difference = v - mean;
+        deviation += difference * difference;
+    }
+
+    deviation /= length;
+    deviation = Math.sqrt(deviation);
+
+    const breakdown = {
+        mean,
+        magnitude,
+        deviation,
+        sign
+    }
+
+    return breakdown;
+}
+
+function NetworkToNodeGroups(network)
+{
+    const groups = [];
+
+    //----------------------------------------
+    // SHORTHANDS
+    //----------------------------------------
+
+    const {
+        bs1, bs2, bs3,
+        cn1, cn2, cn3,
+
+        hl1,
+        hl2,
+
+        outputs,
+        mb1,
+        mb2,
+
+        inputs
+    } = network;
+
+    const hl1Len = hl1.length;
+    const hl2Len = hl2.length;
+
+    const outputsLen = outputs.length;
+    const mb1Len = mb1.length;
+    const mb2Len = mb2.length;
+
+    const totalOutputs =
+        outputsLen +
+        mb1Len +
+        mb2Len;
+
+    //----------------------------------------
+    // HIDDEN GROUPS
+    //----------------------------------------
+
+    const hiddenGroupSize = 8;
+
+    const hiddenGroupCount =
+        hl1Len / hiddenGroupSize;
+
+    for(let g = 0; g < hiddenGroupCount; g++)
+    {
+        const biases = [];
+        const weights = [];
+
+        //------------------------------------
+        // HL1 NODES
+        //------------------------------------
+
+        const start = g * hiddenGroupSize;
+        const end = start + hiddenGroupSize;
+
+        for(let node = start; node < end; node++)
+        {
+            //--------------------------------
+            // HL1 BIAS
+            //--------------------------------
+
+            biases.push(bs1[node]);
+
+            //--------------------------------
+            // CN1 CONNECTIONS
+            //--------------------------------
+
+            const cn1Inputs =
+                inputs.length +
+                mb1Len +
+                mb2Len;
+
+            for(let inputNode = 0; inputNode < cn1Inputs; inputNode++)
+            {
+                const connection =
+                    (inputNode * hl1Len) + node;
+
+                weights.push(
+                    cn1[connection]
+                );
+            }
+        }
+
+        //------------------------------------
+        // HL2 NODES
+        //------------------------------------
+
+        for(let node = start; node < end; node++)
+        {
+            //--------------------------------
+            // HL2 BIAS
+            //--------------------------------
+
+            biases.push(bs2[node]);
+
+            //--------------------------------
+            // CN2 CONNECTIONS
+            //--------------------------------
+
+            for(let hl1Node = 0; hl1Node < hl1Len; hl1Node++)
+            {
+                const connection =
+                    (hl1Node * hl2Len) + node;
+
+                weights.push(
+                    cn2[connection]
+                );
+            }
+        }
+
+        groups.push(
+            new NodeGroup(
+                biases,
+                weights
+            )
+        );
+    }
+
+    //----------------------------------------
+    // OUTPUT GROUP
+    //----------------------------------------
+
+    {
+        const biases = [];
+        const weights = [];
+
+        for(let node = 0; node < outputsLen; node++)
+        {
+            biases.push(bs3[node]);
+
+            for(let hl2Node = 0; hl2Node < hl2Len; hl2Node++)
+            {
+                const connection =
+                    (hl2Node * totalOutputs) + node;
+
+                weights.push(
+                    cn3[connection]
+                );
+            }
+        }
+
+        groups.push(
+            new NodeGroup(
+                biases,
+                weights
+            )
+        );
+    }
+
+    //----------------------------------------
+    // MB1 GROUP
+    //----------------------------------------
+
+    {
+        const biases = [];
+        const weights = [];
+
+        for(let node = 0; node < mb1Len; node++)
+        {
+            const outputIndex =
+                node + outputsLen;
+
+            biases.push(
+                bs3[outputIndex]
+            );
+
+            for(let hl2Node = 0; hl2Node < hl2Len; hl2Node++)
+            {
+                const connection =
+                    (hl2Node * totalOutputs) +
+                    outputIndex;
+
+                weights.push(
+                    cn3[connection]
+                );
+            }
+        }
+
+        groups.push(
+            new NodeGroup(
+                biases,
+                weights
+            )
+        );
+    }
+
+    //----------------------------------------
+    // MB2 GROUP
+    //----------------------------------------
+
+    {
+        const biases = [];
+        const weights = [];
+
+        for(let node = 0; node < mb2Len; node++)
+        {
+            const outputIndex =
+                node +
+                outputsLen +
+                mb1Len;
+
+            biases.push(
+                bs3[outputIndex]
+            );
+
+            for(let hl2Node = 0; hl2Node < hl2Len; hl2Node++)
+            {
+                const connection =
+                    (hl2Node * totalOutputs) +
+                    outputIndex;
+
+                weights.push(
+                    cn3[connection]
+                );
+            }
+        }
+
+        groups.push(
+            new NodeGroup(
+                biases,
+                weights
+            )
+        );
+    }
+
+    return groups;
+}
+
+function NodeGroupsToVector(nodeGroups)
+{
+    const vector = [];
+
+    for(let i = 0; i < nodeGroups.length; i++)
+    {
+        const g = nodeGroups[i];
+
+        //------------------------------------
+        // BIAS STATS
+        //------------------------------------
+
+        vector.push(g.biasMean);
+        vector.push(g.biasMagnitude);
+        vector.push(g.biasDeviation);
+        vector.push(g.biasSign);
+
+        //------------------------------------
+        // WEIGHT STATS
+        //------------------------------------
+
+        vector.push(g.weightMean);
+        vector.push(g.weightMagnitude);
+        vector.push(g.weightDeviation);
+        vector.push(g.weightSign);
+
+        //------------------------------------
+        // TOPOLOGY METADATA
+        //------------------------------------
+
+        //vector.push(g.nodeCount);
+        //vector.push(g.connectionCount);
+    }
+
+    return vector;
+}

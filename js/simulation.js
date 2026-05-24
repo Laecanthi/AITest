@@ -83,7 +83,7 @@ function SetNextGen(initialize = false)
     
     if(!initialize)
     {
-        MutateNextGen();
+        if(generation!=0) MutateNextGen();
         ResetAgents();
         RenderGraph();
     }
@@ -179,6 +179,8 @@ function SetNextGen(initialize = false)
         fieldOriginX,
         fieldOriginY
     );
+
+    distanceFieldTexture = BakeFlowTexture(distanceField, 800, 600);
     //console.log(flowField);
 }
 

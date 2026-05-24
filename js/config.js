@@ -139,6 +139,7 @@ const fieldHeight = Math.ceil(
 //let flowField = [];
 //let flatFlowField = null;
 let distanceField = null;
+var distanceFieldTexture = null;
 
 var inputLabels =
     [

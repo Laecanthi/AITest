@@ -685,8 +685,8 @@ function CalculateScore(agent, targetX, groundY, targetRadius, generationLength,
         score += verticalSpeed;
         score += horizontalSpeed;
         score += angularSpeed;
-        score += angleError * 100;
-        score += distance * 200;
+        score += angleError;
+        score += distance * distance * 2;
         score += 100;
         return score;
     }
@@ -748,10 +748,12 @@ function CalculateGrade(agent, targetX, groundY, targetRadius, generationLength,
     // EXCESS - static criteria with high precision
     
     // ORIENTATION
-    if(angleError<degreesToRadians(1.5)) grade++; // max error of 1.5 degrees from upright
+    const maxAngleError = degreesToRadians(CurriculumBlend([10, 7.5, 5, 3, 2.5, 2, 1.5, 1.25, 1], curriculumStage) + 1);
+    if(angleError<maxAngleError) grade++; // max error of 1.5 degrees from upright
 
     // LOW HORIZONTAL MOTION
-    if(horizontalSpeed<1.5) grade++; // max speed of 1.5 m/s
+    const maxHorizontalSpeed = CurriculumBlend([5, 4.5, 4, 3.5, 3, 2.5, 2, 1.5, 1], curriculumStage)
+    if(horizontalSpeed<maxHorizontalSpeed) grade++; // max speed of 1.5 m/s
 
     return grade;
 }

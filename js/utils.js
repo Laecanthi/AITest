@@ -148,3 +148,29 @@ function LerpAngle(a, b, t)
     let diff = NormalizeAngle(b - a);
     return a + diff * t;
 }
+
+function VectorDistance(a, b)
+{
+    if(a.length !== b.length)
+    {
+        console.error(
+            "Vector length mismatch",
+            a.length,
+            b.length
+        );
+
+        return Infinity;
+    }
+
+    let sum = 0;
+
+    for(let i = 0; i < a.length; i++)
+    {
+        const difference =
+            a[i] - b[i];
+
+        sum += difference * difference;
+    }
+
+    return Math.sqrt(sum);
+}
