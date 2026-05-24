@@ -305,69 +305,54 @@ function MutateNextGen() /**************************************** NEXT GENERATI
     const offspringRoom = amountOfAgents - nextGeneration.length;
     const allocatedOffsprings = new Array(speciesCount).fill(0);
 
-    let totalWeight = 0;
-
-    // better rank = bigger weight
-
-    const activeSpecies = []; // deactivate species that are empty
-    let deactivated = 0;
+    const activeSpecies = [];
 
     for (let s = 0; s < speciesCount; s++)
     {
-        if (speciesBuckets[s].length > 0)
-        {
-            totalWeight += speciesCount - speciesRank[s];
-            activeSpecies.push(s);
-        }
-        else
-        {
-            deactivated++;
-            speciesRank[s] = Infinity;
-        }
+        if (speciesBuckets[s].length === 0) continue;
+
+        activeSpecies.push({
+            id: s,
+            rank: speciesRank[s]
+        });
     }
 
-    // allocate proportionally
+    // create weights
+
+    let totalWeight = 0;
+
+    for (const sp of activeSpecies)
+    {
+        totalWeight += speciesCount - sp.rank;
+    }
+
+    // allocat offspring
+
     let allocatedTotal = 0;
 
-    for(let s = 0; s < speciesCount; s++)
+    for (const sp of activeSpecies)
     {
-        if(speciesRank[s] === Infinity) continue;
-        const weight = (speciesCount) - speciesRank[s];
+        const weight = speciesCount - sp.rank;
 
-        const offspringCount =
-            Math.floor(
-                (weight / totalWeight) *
-                offspringRoom
-            );
+        const offspringCount = Math.floor(
+            (weight / totalWeight) * offspringRoom
+        );
 
-        allocatedOffsprings[s] = offspringCount;
-
+        allocatedOffsprings[sp.id] = offspringCount;
         allocatedTotal += offspringCount;
     }
 
-    // distribute leftovers
-    while(allocatedTotal < offspringRoom)
+    // allocate leftovers
+    while (allocatedTotal < offspringRoom)
     {
-        // give leftovers to best species first
-        for(let s = 0; s < speciesCount; s++)
+        for (const sp of activeSpecies)
         {
-            if(allocatedTotal >= offspringRoom)
-            {
-                break;
-            }
+            if (allocatedTotal >= offspringRoom) break;
 
-            if(speciesRank[s] === 0)
-            {
-                allocatedOffsprings[s]++;
-                allocatedTotal++;
-            }
+            allocatedOffsprings[sp.id]++;
+            allocatedTotal++;
         }
     }
-
-    /*while (nextGeneration.length < amountOfAgents)
-    {
-
-    }*/
 
     for(let s = 0; s < speciesCount; s++)
     {
@@ -386,6 +371,10 @@ function MutateNextGen() /**************************************** NEXT GENERATI
     }
 
     neuralNetworks = nextGeneration;
+
+    console.log(
+        speciesBuckets.map(b => b.length)
+    );
     
 }
 
