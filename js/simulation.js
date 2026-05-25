@@ -157,7 +157,7 @@ function SetNextGen(initialize = false)
     mutationRate = CurriculumBlend([0.08,0.03,0.01]);
     mutationChance = CurriculumBlend([0.03,0.02,0.01]);
     // if the curriculum cap just increased, mutation change temporarily decreases
-    if(capTimer >= 25) mutationChance /= 2;
+    if(capTimer > 0) mutationChance /= 2;
     
     targetRadius = CurriculumBlend([8,3,2.5,2.5,2,1.5]);
     maxThrustDuration = CurriculumBlend([100,100,30,15,10]);
