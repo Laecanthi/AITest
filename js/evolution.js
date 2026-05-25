@@ -109,6 +109,7 @@ function MutateNextGen() /**************************************** NEXT GENERATI
                 console.info("Attempt: " + retryCount);
                 retryCount++;
                 generation--;
+                validGeneration = false;
                 return;
             }else{
                 console.warn("High delta score has been confirmed:" + deltaScore.toFixed(2) + "%");
@@ -119,6 +120,7 @@ function MutateNextGen() /**************************************** NEXT GENERATI
             retrySign = Math.sign(deltaScore);
             retryCount = 0;
             generation--;
+            validGeneration = false;
             return;
         }
     }else{
@@ -136,6 +138,7 @@ function MutateNextGen() /**************************************** NEXT GENERATI
             console.info("Attempt: " + retryCount);
             retryCount++;
             generation--;
+            validGeneration = false;
             return;
         }else{
             console.warn("Low pass rate confirmed:" + (passRate * 100).toFixed(2) + "%");

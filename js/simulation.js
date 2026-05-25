@@ -40,46 +40,53 @@ function Iterate(dt, step = false)
     return false;
 }
 
+let validGeneration = true;
+
 function SetNextGen(initialize = false)
 {
+    validGeneration = true;
+    if(generation!=0) MutateNextGen();
     
 
-    //curriculumStage = generation / 300;
-
-    highestPassRateDuringCurriculum = Math.max(passRate, highestPassRateDuringCurriculum); // highest pass rate is defined for the previous generation's pass rate
-
-    passRate = 0;
-    for(let i = 0; i < grades.length; i++)
+    if(validGeneration) // only progress curriculum if valid generation
     {
-        passRate += grades[i];
-    }
-    passRate /= grades.length * 2; // although the max is 4, remember, 2 is pasing, 4 is exceeding!
-    
+        highestPassRateDuringCurriculum = Math.max(passRate, highestPassRateDuringCurriculum); // highest pass rate is defined for the previous generation's pass rate
 
-    curriculumStage += Math.max(0,
-        (passRate - 0.5) / 20
-    ); // for every % passing over 50%, curriculumStage increases by 0.05
-
-    capTimer--;
-
-    // to increase the cap, the pass rate must be over 80%, the cap timer must be 0 or less, and the current curriculum stage has to be within 0.025 of the current cap
-    if(passRate >= 0.8 && capTimer <= 0 && curriculumStage > curriculumCap - 0.025)
-    {
-        consecutivePasses++;
-
-        if(consecutivePasses >= 3) // must pass 3 times in a row
+        passRate = 0;
+        for(let i = 0; i < grades.length; i++)
         {
-            curriculumCap += 0.5; // increases by 0.5
-            highestPassRateDuringCurriculum = 0;
-            capTimer = 10;
-            consecutivePasses = 0;
-            console.warn("Cap has increased to " + curriculumCap);
+            passRate += grades[i];
         }
-    }else{
-        consecutivePasses = 0;
+        passRate /= grades.length * 2; // although the max is 4, remember, 2 is pasing, 4 is exceeding!
+        
+
+        curriculumStage += Math.max(0,
+            (passRate - 0.5) / 20
+        ); // for every % passing over 50%, curriculumStage increases by 0.05
+
+        capTimer--;
+
+        // to increase the cap, the pass rate must be over 80%, the cap timer must be 0 or less, and the current curriculum stage has to be within 0.025 of the current cap
+        if(passRate >= 0.8 && capTimer <= 0 && curriculumStage > curriculumCap - 0.025)
+        {
+            consecutivePasses++;
+
+            if(consecutivePasses >= 3) // must pass 3 times in a row
+            {
+                curriculumCap += 0.5; // increases by 0.5
+                highestPassRateDuringCurriculum = 0;
+                capTimer = 10;
+                consecutivePasses = 0;
+                console.warn("Cap has increased to " + curriculumCap);
+            }
+        }else{
+            consecutivePasses = 0;
+        }
+
+        curriculumStage = Math.min(curriculumStage, curriculumCap);
     }
 
-    curriculumStage = Math.min(curriculumStage, curriculumCap);
+    
 
     memoryHistory.length = 0;
     outputHistory.length = 0;
@@ -95,7 +102,7 @@ function SetNextGen(initialize = false)
     
     if(!initialize)
     {
-        if(generation!=0) MutateNextGen();
+        
         ResetAgents();
         RenderGraph();
     }
