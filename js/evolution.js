@@ -21,9 +21,9 @@ function MutateNextGen() /**************************************** NEXT GENERATI
 
     if(speciesCount < targetSpeciesCount)
     {
-        threshold -= 0.01;
+        threshold -= 0.002;
     }else{
-        threshold += 0.01;
+        threshold += 0.002;
     }
 
 
@@ -208,37 +208,61 @@ function MutateNextGen() /**************************************** NEXT GENERATI
         nextGeneration.push(population[i].network);
     }
 
-    const survivorCount = Math.floor(amountOfAgents * 0.4);
+    const survivorCount = Math.floor(amountOfAgents * 0.7); // 70% of the population is the base count of survivors
 
-    const hardCutoff = CurriculumBlend([500, 0, -200, -100, -8000], curriculumStage);
-    const softCutoff = population[Math.floor(survivorCount * 0.25)].score; // top 25th percentile score
+    const hardCutoff = CurriculumBlend([500, 0, -200, -1000, -8000], curriculumStage);
+    const softCutoff = population[Math.floor(survivorCount * 0.75)].score; // top 75th percentile score of survivors
+
+    // minimum survivors should be ~50% of the population
 
     // use whichever is more permissive
     const activeCutoff = Math.max(hardCutoff, softCutoff);
 
-    survivors = population
+    /*survivors = population
         .slice(0, survivorCount)
-        .filter(a => a.score <= activeCutoff);
+        .filter(a => a.score <= activeCutoff);*/
+
+    survivors = [];
+
+    for(let i = 0; i < survivorCount; i++) // only check the allowed amount of survivors before pushing to list
+    {
+        const agent = population[i];
+        if(agent.score > activeCutoff) continue; // apply cutoff
+        if(agent.grade === 0) // grade 0 agents
+        {
+            if(Math.random() < 0.3) continue; // have a 30% chance of randomly dying
+        }
+
+        survivors.push(agent);
+    }
 
     /*console.log("Hard cutoff:", hardCutoff.toFixed(1), 
                 "Soft cutoff:", softCutoff.toFixed(1),
                 "Active:", activeCutoff.toFixed(1),
                 "Survivors:", survivors.length);*/
 
-    let maxGradeAgents = [];
+    let duplicatedAgents = [];
 
     for(let i = 0; i < survivors.length; i++)
     {
         const grade = survivors[i].grade;
-        if(grade === 4) maxGradeAgents.push(survivors[i]);
+        if(grade >= 3) // grade 3 or higher agents get a 30% chance to get duplicated
+        {
+            if(Math.random() < 0.3) duplicatedAgents.push(survivors[i]);
+        }
+        if(grade === 4) // grade 4 agents get an additional 30% chance to get duplicated
+        {
+            if(Math.random() < 0.3) duplicatedAgents.push(survivors[i]);
+        }
+        // grade 4 agents have a 51& chance to get duplicated, and a 9% chance to get duplicated twice
     }
 
     console.log(
-        "Max Grade Agents: " + maxGradeAgents.length,
+        "Duplicated Agents: " + duplicatedAgents.length,
         "Survivors: " + survivors.length
     );
 
-    survivors.push(...maxGradeAgents);
+    survivors.push(...duplicatedAgents);
 
     const speciesBuckets = Array.from(
         { length: speciesCount },
@@ -265,12 +289,15 @@ function MutateNextGen() /**************************************** NEXT GENERATI
     }
 
     let speciesFitness = [];
+    const meanWeight = 1;
+    const bestWeight = 3;
 
     for(let s = 0; s < speciesCount; s++)
     {
         const speciesBucket = speciesBuckets[s];
         const length = speciesBucket.length;
         let sum = 0;
+        let best = Infinity;
 
         if(length === 0)
         {
@@ -281,10 +308,14 @@ function MutateNextGen() /**************************************** NEXT GENERATI
         for(let i = 0; i < length; i++)
         {
             sum += speciesBucket[i].score;
+            best = Math.min(speciesBucket[i].score);
         }
 
-        sum /= length;
-        speciesFitness.push(sum);
+        let fitness = sum / length * meanWeight;
+        fitness += best * bestWeight;
+        fitness /= meanWeight + bestWeight;
+
+        speciesFitness.push(fitness);
     }
 
     const speciesRank = new Array(speciesCount);
@@ -412,12 +443,21 @@ function CreateOffspringFromPool(pool, i)
 
 function TournamentSelect(population)
 {
+    const minCandidates = 2; // at minimum there are 2 candidates
+    const candidateThreshold = 0.1; // at a population of 100, there are 10 candidates
+    // as a general rule of thumb, the estimated population input should have ~5 or so candidates
+    // currently I expect the estimated population to be around 40~60 ish
+
+    const length = population.length;
+
+    const candidateCount = Math.max(minCandidates, Math.ceil(length * candidateThreshold));
+
     let best = null;
 
-    for (let i = 0; i < 3; i++)
+    for (let i = 0; i < candidateCount; i++)
     {
         let candidate =
-            population[Math.floor(Math.random() * population.length)];
+            population[Math.floor(Math.random() * length)];
 
         if (!best || candidate.score < best.score)
         {

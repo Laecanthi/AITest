@@ -54,8 +54,8 @@ function SetNextGen(initialize = false)
     
 
     curriculumStage += Math.max(0,
-        (passRate - 0.5) / 2
-    ); // for every % passing over 50%, curriculumStage increases by 0.5
+        (passRate - 0.5) / 4
+    ); // for every % passing over 50%, curriculumStage increases by 0.25
 
     capTimer--;
 
