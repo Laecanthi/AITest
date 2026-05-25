@@ -129,10 +129,10 @@ class Agent /**************************** AGENT **************************/
 
 function ResetAgents()
 {
-    const velocityFactor = 5 * CurriculumBlend([1, 1.1, 2, 3]); // random velocity increases from small to devious
-    const spawnX = targetX + (Math.random() - 0.5) * 40 * CurriculumBlend([1, 1.5, 3, 4]); // ±20m from target to ±80m from target (width of map is 160)
-    const spawnY = Math.random() * -30 * CurriculumBlend([1, 1.1, 2.5, 3]); // between 0 and 30 to 90 (height of map is 120)
-    const spawnA = Math.PI / 2 + ((Math.random() - 0.5) * degreesToRadians(5) * CurriculumBlend([1, 2, 3, 4])); // ±5 degress from 90, to ±20 degrees from 90
+    const velocityFactor = 5 * CurriculumBlend([1, 1, 1, 1.1, 2, 5]); // random velocity increases from small to devious
+    const spawnX = targetX + (Math.random() - 0.5) * 40 * CurriculumBlend([1, 1, 1.5, 3, 4]); // ±20m from target to ±80m from target (width of map is 160)
+    const spawnY = Math.random() * -30 * CurriculumBlend([1, 1, 1.1, 2.5, 3]); // between 0 and 30 to 90 (height of map is 120)
+    const spawnA = Math.PI / 2 + ((Math.random() - 0.5) * degreesToRadians(5) * CurriculumBlend([1, 1, 2, 3, 5])); // ±5 degress from 90, to ±25 degrees from 90
     const spawnVelX = (Math.random() - 0.5) * velocityFactor; // small random initial velocity
     const spawnVelY = (Math.random() - 0.5) * velocityFactor;
     const spawnVelA = (Math.random() - 0.5) * degreesToRadians(velocityFactor);
@@ -143,7 +143,7 @@ function ResetAgents()
 
     for(var i = 0; i < amountOfAgents; i++)
     {
-        let newAgent = new Agent(spawnX, spawnY, 50, 500, 0.1, 2000, 80);
+        let newAgent = DefaultAgent(spawnX, spawnY);
         newAgent.angle = spawnA;
         newAgent.xVel = spawnVelX;
         newAgent.yVel = spawnVelY;
@@ -153,4 +153,9 @@ function ResetAgents()
         scores.push(0);
         grades.push(0);
     }
+}
+
+function DefaultAgent(x, y)
+{
+    return new Agent(x, y, 50, 500, 0.1, 2500, 250);
 }

@@ -246,7 +246,7 @@ function UpdateAgent(agent, dt, thrustBurn, minThrust, windForceX, windForceY, c
     const TMnoise = FractalNoise1D(time * 10, generationSeed + 4) * 0.04; // extra noise that is multiplecative
     const TDnoise = FractalNoise1D(time * 5, generationSeed + 21) * 0.12; // the noise applied to deep thrusting
     
-    const noiseApplication = CurriculumBlend([0, 0.5, 1], curriculumStage);
+    const noiseApplication = CurriculumBlend([0, 0, 0.05, 0.5, 1], curriculumStage);
 
     agent.thrust = clamp(agent.thrust, 0, 1);
     agent.rotation = clamp(agent.rotation, -1, 1);
@@ -421,7 +421,7 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
         const engineCommand = networks[i].outputs[1];
 
         const minThrust = 0.4;
-        const deadzone = 0.02;
+        const deadzone = 0.075;
 
         /*const spoolUpRate = 4.5; // default values
         const spoolDownRate = 7.0;
@@ -429,12 +429,12 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
         const shutdownDelay = 0.15;
         const cooldownLength = 0.75;*/
 
-        const spoolUpRate = CurriculumBlend([15, 10, 7.0, 4.5], curriculumStage);
-        const spoolDownRate = CurriculumBlend([15, 10, 7.0], curriculumStage);
-        const ignitionDelay = CurriculumBlend([0.01, 0.1, 0.25], curriculumStage);
-        const shutdownDelay = CurriculumBlend([0.01, 0.05, 0.15], curriculumStage);
-        const cooldownLength = CurriculumBlend([0.05, 0.1, 0.25, 0.75], curriculumStage);
-        const rotationSpoolRate = CurriculumBlend([25, 15, 7], curriculumStage);
+        const spoolUpRate = CurriculumBlend([15, 15, 7, 7.0, 4.5], curriculumStage);
+        const spoolDownRate = CurriculumBlend([15, 15, 7.0], curriculumStage);
+        const ignitionDelay = CurriculumBlend([0.01, 0.01, 0.1, 0.25], curriculumStage);
+        const shutdownDelay = CurriculumBlend([0.01, 0.01, 0.075, 0.15], curriculumStage);
+        const cooldownLength = CurriculumBlend([0.05, 0.05, 0.15, 0.25, 0.75], curriculumStage);
+        const rotationSpoolRate = CurriculumBlend([25, 25, 15, 7], curriculumStage);
 
         const agent = agents[i];
 
@@ -529,7 +529,7 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
             agents[i].timeOfDeath = time;
         }else{
             //networks[i].lastScore = scores[i];
-            scores[i] += CalculateRuntimeScore(agent, distance, dt);
+            scores[i] += CalculateRuntimeScore(agent, distance, dt, curriculumStage);
         }
 
         if (CollideAnything(
@@ -883,7 +883,7 @@ function CalculateGrade(agent, targetX, groundY, targetRadius, generationLength,
     return grade;
 }
 
-function CalculateRuntimeScore(agent, distance, dt)
+function CalculateRuntimeScore(agent, distance, dt, curriculumStage)
 {
     const maxProgress = 10; // this is genuinely insanely high, because that's like. 10 meters in 8 milliseconds.
     // there are no bugs in the physics system that could possibly create that velocity, but still just in case.
@@ -935,7 +935,7 @@ function CalculateRuntimeScore(agent, distance, dt)
         return 0;
     }
 
-    score *= 0.75; // slightly lowers the weight of all runtime score because terminal score is more important
+    score *= CurriculumBlend([5,4,3,2,1,0.5,0.25], curriculumStage); // score is weighed so that runtime score is more important in early curriculums and less important later
 
     return score;
 }
@@ -1097,9 +1097,9 @@ function generateObstacles(amount, density, seed, curriculumStage, targetX, targ
 
     let testDifficultScene = false;
 
-    if(curriculumStage >= 1 || testDifficultScene) obstacles.push({x: targetX - 5, y: targetY + 15, w: 10, h: 2.5}); // starting at curriculum stage 1, agents now have to go around an obstacle
+    if(curriculumStage >= 2 || testDifficultScene) obstacles.push({x: targetX - 5, y: targetY + 15, w: 10, h: 2.5}); // starting at curriculum stage 1, agents now have to go around an obstacle
 
-    if(curriculumStage >= 1.5 || testDifficultScene) // starting halfway through curriculum stage 1, agents can no longer hug the ground and thus must actually learn to avoid obstacles
+    if(curriculumStage >= 3 || testDifficultScene) // starting halfway through curriculum stage 1, agents can no longer hug the ground and thus must actually learn to avoid obstacles
     {
         obstacles.push({x: targetX + 7.5, y: targetY - 5, w: 2.5, h: 7.5});
         obstacles.push({x: targetX - 10, y: targetY - 5, w: 2.5, h: 7.5});

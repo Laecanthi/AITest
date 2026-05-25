@@ -58,7 +58,7 @@ var agents = [];
 var neuralNetworks = [];
 var scores = [];
 var grades = [];
-const amountOfAgents = 300;
+const amountOfAgents = 500;
 
 var time = 0;
 var substepTime = 0;

@@ -111,8 +111,8 @@ function SetNextGen(initialize = false)
     const spawnX = agents[0].xPos;
     const spawnY = agents[0].yPos;
 
-    obsAmount = Math.floor(CurriculumBlend([0,0,5,10,15], curriculumStage) / 2);
-    obsDensity = CurriculumBlend([0,0,5,10,15], curriculumStage);
+    obsAmount = Math.floor(CurriculumBlend([0,0,1,1,5,10,15], curriculumStage) / 2);
+    obsDensity = CurriculumBlend([0,0,5,5,10,15], curriculumStage);
 
     do
     {
@@ -120,7 +120,7 @@ function SetNextGen(initialize = false)
 
         
 
-        targetX = 80 + (Hash(142, generationSeed) - 0.5) * CurriculumBlend([0,15,40,80], curriculumStage);
+        targetX = 80 + (Hash(142, generationSeed) - 0.5) * CurriculumBlend([0,0,40,80], curriculumStage);
 
         const targetY = GetGroundHeight(
             targetX,
@@ -152,14 +152,14 @@ function SetNextGen(initialize = false)
     // if the curriculum cap just increased, mutation change temporarily decreases
     if(capTimer >= 25) mutationChance /= 2;
     
-    targetRadius = CurriculumBlend([8,4,3,2,1.5]);
-    maxThrustDuration = CurriculumBlend([100,30,15,10]);
+    targetRadius = CurriculumBlend([8,3,2.5,2.5,2,1.5]);
+    maxThrustDuration = CurriculumBlend([100,100,30,15,10]);
     thrustBurn = CurriculumBlend([0, 500 / maxThrustDuration]);
-    crashVelocity = CurriculumBlend([6, 4, 2.5, 1.5, 0.5]);
+    crashVelocity = CurriculumBlend([6, 3, 3, 2.5, 2, 1.5, 1, 0.5]);
 
 
     windDirection = Math.random() * Math.PI * 2;
-    globalWindMagnitude = Math.random() * CurriculumBlend([0,1,2.5,5,15]);
+    globalWindMagnitude = Math.random() * CurriculumBlend([0,0,1,2.5,2.5,5,15]);
     windForceY = Math.sin(windDirection) * globalWindMagnitude;
     windForceX = Math.cos(windDirection) * globalWindMagnitude;
 
