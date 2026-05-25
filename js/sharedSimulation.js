@@ -735,6 +735,8 @@ function CalculateTerminalScore(agent, targetX, groundY, targetRadius, generatio
 {
     // variables
 
+    const targetY = GetGroundHeight(targetX, groundY, generationSeed, targetX, targetRadius, curriculumStage);
+
     const verticalSpeed = Math.abs(agent.yVel);
     const horizontalSpeed = Math.abs(agent.xVel);
     const speed = Math.hypot(verticalSpeed, horizontalSpeed);
@@ -795,6 +797,8 @@ function CalculateTerminalScore(agent, targetX, groundY, targetRadius, generatio
     
     // score
     // balance for a perfect landing being -10,000
+
+    let score = 0;
     
     if (crash || !landed) // crashing or not landing is worse than landing in the wrong spot
     {
