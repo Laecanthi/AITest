@@ -209,7 +209,7 @@ function NetworkToNodeGroups(network)
     // HIDDEN GROUPS
     //----------------------------------------
 
-    const hiddenGroupSize = 8;
+    const hiddenGroupSize = 4;
 
     const hiddenGroupCount =
         hl1Len / hiddenGroupSize;
@@ -412,18 +412,18 @@ function NodeGroupsToVector(nodeGroups)
         //------------------------------------
 
         vector.push(g.biasMean);
-        vector.push(g.biasMagnitude);
+        vector.push(g.biasMagnitude * 2);
         vector.push(g.biasDeviation);
-        vector.push(g.biasSign);
+        vector.push(g.biasSign * 0.25);
 
         //------------------------------------
         // WEIGHT STATS
         //------------------------------------
 
         vector.push(g.weightMean);
-        vector.push(g.weightMagnitude);
-        vector.push(g.weightDeviation);
-        vector.push(g.weightSign);
+        vector.push(g.weightMagnitude * 3);
+        vector.push(g.weightDeviation * 1.5);
+        vector.push(g.weightSign * 0.5);
 
         //------------------------------------
         // TOPOLOGY METADATA
@@ -434,4 +434,17 @@ function NodeGroupsToVector(nodeGroups)
     }
 
     return vector;
+}
+
+function ApplyNodeGroupWeights(nodeGroup)
+{
+    nodeGroup.biasMean *= 1;
+    nodeGroup.biasMagnitude *= 2;
+    nodeGroup.biasSign *= 0.25;
+    nodeGroup.biasDeviation *= 1;
+
+    nodeGroup.weightMean *= 1;
+    nodeGroup.weightMagnitude *= 3;
+    nodeGroup.weightSign *= 0.5;
+    nodeGroup.weightDeviation *= 1.5;
 }
