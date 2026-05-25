@@ -517,9 +517,19 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
             agent.rotation = LinearTargetChange(agent.rotation, 0, dt * rotationSpoolRate);
         }
 
-        
+        agent.lastDist = SampleDistanceField(agent.xPos, agent.yPos, distanceField, fieldWidth, fieldHeight, cellSize, fieldOriginX, fieldOriginY);
 
         UpdateAgent(agent, dt, thrustBurn, minThrust, windForceX, windForceY, crashVelocity, time, generationSeed, curriculumStage);
+
+        let distance = SampleDistanceField(agent.xPos, agent.yPos, distanceField, fieldWidth, fieldHeight, cellSize, fieldOriginX, fieldOriginY);
+
+        if(!isFinite(distance)) // distance would only be non-finite if there was a bug, or if the agent is out of range
+        {
+            agents[i].alive = false;
+            agents[i].timeOfDeath = time;
+        }else{
+            scores[i] += CalculateRuntimeScore(agent, distance, dt);
+        }
 
         if (CollideAnything(
                 agents[i].xPos,
@@ -756,6 +766,61 @@ function CalculateGrade(agent, targetX, groundY, targetRadius, generationLength,
     if(horizontalSpeed<maxHorizontalSpeed) grade++; // max speed of 1.5 m/s
 
     return grade;
+}
+
+function CalculateRuntimeScore(agent, distance, dt)
+{
+    const maxProgress = 10; // this is genuinely insanely high, because that's like. 10 meters in 8 milliseconds.
+    // there are no bugs in the physics system that could possibly create that velocity, but still just in case.
+
+    let score = 0;
+
+    let progress = distance - agent.lastDist; // negative score is better
+    // btw last distance and distance are both given with distance field numbers
+
+    progress = Math.max(-maxProgress, Math.min(maxProgress, progress));
+
+    score = progress * 10;
+
+    if(Math.sign(progress) === 1)
+    {
+        score += progress * progress * 0.15; // if the agent is travelling away from the target, it gets punished by the square of it's progress
+        // that way the faster it's moving away from the target the more punished it gets
+        // if the agent moves away by 100 meters, the total punishment is:
+        // 1,500
+        // 1000
+        // so 2500
+        // brutal, but a perfect landing is still 10,000.
+
+        // also the reason why this exists is so that moving back 10 meters then forward 10 meters is still punished
+    }
+
+    // if the agents start (lets say) 100 meters away from the target
+    // from beginning to end, it's progress should be -100
+    // now, that's genuinely nothing on the scale of the final score
+    // so progress should be multiplied signifigantly
+    // (enough for it to actually matter)
+
+    let distancePunishment = distance * distance * dt;
+    distancePunishment /= 100;
+    distancePunishment *= 0.25;
+    score += distancePunishment;
+
+    // for ever second, the agent gets punished by the square of distance.
+    // 10 seconds 100 meters away the amount is 100,000
+    // divide by 100 to normalize a distance of 100 meters
+    // still 1000, so further reduce that to 250
+    // still a decent chunk, but it definitely incentivises getting closer to the target
+    // the reason why it's squared is because moving a little bit away isn't that bad, but getting wildly far away is
+
+    if(!isFinite(score))
+    {
+        console.error("Non-finite score!", progress, distancePunishment, distance);
+
+        return 0;
+    }
+
+    return score;
 }
 
 //******************************* PERLIN NOISE ******************************************************/

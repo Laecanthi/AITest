@@ -72,7 +72,7 @@ onmessage = function(event) {
 
     for(let i = 0; i < agents.length; i++)
     {
-        scores[i] = CalculateScore(agents[i], targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed);
+        scores[i] += CalculateScore(agents[i], targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed);
         grades[i] = CalculateGrade(agents[i], targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed);
     }
 
