@@ -28,6 +28,7 @@ function Iterate(dt, step = false)
                 let distance = SampleDistanceField(agent.xPos, agent.yPos, distanceField, fieldWidth, fieldHeight, cellSize, fieldOriginX, fieldOriginY);
                 scores[i] += CalculateTerminalScore(agent, targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed, distance);
                 grades[i] = CalculateGrade(agent, targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed);
+                neuralNetworks[i].lastScore = scores[i];
             }
             //SetNextGen();
             return true;

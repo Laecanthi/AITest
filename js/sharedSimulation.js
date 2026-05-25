@@ -528,7 +528,7 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
             agents[i].alive = false;
             agents[i].timeOfDeath = time;
         }else{
-            networks[i].lastScore = scores[i];
+            //networks[i].lastScore = scores[i];
             scores[i] += CalculateRuntimeScore(agent, distance, dt);
         }
 
@@ -742,6 +742,9 @@ function CalculateTerminalScore(agent, targetX, groundY, targetRadius, generatio
     const speed = Math.hypot(verticalSpeed, horizontalSpeed);
     const angularSpeed = Math.abs(agent.aVel);
 
+    const normalizedSpeed = (verticalSpeed * 3 + speed * 2) / 2;
+    // vertical speed is a lot more important than horizontal speed
+
     const angleError = Math.abs(
         ((agent.angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI / 2
     );
@@ -749,15 +752,23 @@ function CalculateTerminalScore(agent, targetX, groundY, targetRadius, generatio
     const distance = Math.sqrt(horizontalError*horizontalError+(agent.yPos - targetY)*(agent.yPos - targetY)); // euclidean distance
 
     const landed = !agent.alive;
-    const crash = verticalSpeed > crashVelocity;
+    const crash = normalizedSpeed > crashVelocity;
     const onTarget = distance <= targetRadius;
     let penalty = 0;
     let landingQuality = 0;
     let landingEfficiency = 0;
 
     // penalty
-    penalty += fieldDist * 50;
+    if(isFinite(fieldDist))
+    {
+        penalty += fieldDist * 50;
+    }else{
+        penalty += distance;
+        penalty += 1000; // gives an extra punishment if agent is out of bounds
+    }
+    
     penalty += speed * 100;
+    penalty += normalizedSpeed * 50;
     penalty += angularSpeed * 50;
     penalty += angleError * 200;
 
@@ -775,7 +786,7 @@ function CalculateTerminalScore(agent, targetX, groundY, targetRadius, generatio
         if (!crash)
         {
             landingQuality -= 2000;
-            landingQuality -= (1 - speed / crashVelocity) * 2000;
+            landingQuality -= (1 - normalizedSpeed / crashVelocity) * 2000;
         }
 
         // give an extra reward for landing on the target without crashing
@@ -789,8 +800,12 @@ function CalculateTerminalScore(agent, targetX, groundY, targetRadius, generatio
         penalty *= 2; // doubles penalty if agent didn't land
     }
 
-    landingEfficiency -= (1 - agent.fuel / 500) * 500;
-    landingEfficiency -= (1 - agent.timeOfDeath / generationLength) * 500;
+    
+    if(landed) // no landing efficiency reward if agent never landed
+    {
+        landingEfficiency -= (1 - agent.fuel / 500) * 500;
+        landingEfficiency -= (1 - agent.timeOfDeath / generationLength) * 500;
+    }
 
     // perfect landing efficiency is -1,000
 
@@ -807,6 +822,12 @@ function CalculateTerminalScore(agent, targetX, groundY, targetRadius, generatio
     score += penalty * CurriculumBlend([1, 0.9, 0.75, 0.5, 0.25], curriculumStage);
     score += landingQuality;
     score += landingEfficiency * CurriculumBlend([0, 0.1, 0.25, 0.5, 1], curriculumStage);
+
+    if(!isFinite(score))
+    {
+        console.error("calculated score not finite!", penalty, landingQuality, landingEfficiency, score);
+        return 1000000; // returns an absurdly large number instead of a non-finite one
+    }
 
     return score;
 }

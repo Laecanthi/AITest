@@ -76,6 +76,7 @@ onmessage = function(event) {
         let distance = SampleDistanceField(agent.xPos, agent.yPos, distanceField, fieldWidth, fieldHeight, cellSize, fieldOriginX, fieldOriginY);
         scores[i] += CalculateTerminalScore(agent, targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed, distance);
         grades[i] = CalculateGrade(agent, targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed);
+        networks[i].lastScore = scores[i];
     }
 
     const trajX = new Array(trajectory.length);
