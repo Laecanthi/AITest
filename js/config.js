@@ -115,6 +115,7 @@ var lastVerifiedGeneration = 0;
 
 var passRate = 0;
 var highestPassRateDuringCurriculum = 0;
+var consecutivePasses = 0;
 var curriculumCap = 0.999; //just below zero so that it can't start the next curriculum without increasing the cap
 var capTimer = 50;
 
