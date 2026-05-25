@@ -222,6 +222,7 @@ PlotArray(bestScore, "Black");
 PlotArray(averageScore, "Green");
 PlotArray(medianScore, "Blue");
 PlotArray(worstScore, "Red");
+PlotArray(eliteScore, "Orange");
 
 ctx.strokeStyle = "black";
 

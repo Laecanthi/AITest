@@ -198,15 +198,20 @@ function MutateNextGen() /**************************************** NEXT GENERATI
     );
 
     let nextGeneration = [];
+    let eScore = 0;
 
     for (let i = 0; i < eliteCount; i++)
     {
+        eScore += population[i].score;
         population[i].network.age++;
         population[i].network.lastScore = population[i].score;
         population[i].network.i = i;
         ResetLayers(population[i].network);
         nextGeneration.push(population[i].network);
     }
+    eScore /= eliteCount;
+
+    eliteScore.push(eScore);
 
     const survivorCount = Math.floor(amountOfAgents * 0.7); // 70% of the population is the base count of survivors
 
@@ -308,7 +313,7 @@ function MutateNextGen() /**************************************** NEXT GENERATI
         for(let i = 0; i < length; i++)
         {
             sum += speciesBucket[i].score;
-            best = Math.min(speciesBucket[i].score);
+            best = Math.min(best, speciesBucket[i].score);
         }
 
         let fitness = sum / length * meanWeight;
@@ -444,9 +449,9 @@ function CreateOffspringFromPool(pool, i)
 function TournamentSelect(population)
 {
     const minCandidates = 2; // at minimum there are 2 candidates
-    const candidateThreshold = 0.1; // at a population of 100, there are 10 candidates
+    const candidateThreshold = 0.175; // at a population of 100, there are 10 candidates
     // as a general rule of thumb, the estimated population input should have ~5 or so candidates
-    // currently I expect the estimated population to be around 40~60 ish
+    // currently I expect the estimated population to be around ~30 ish
 
     const length = population.length;
 

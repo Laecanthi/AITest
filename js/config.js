@@ -69,10 +69,11 @@ var randomPosY = 0;
 var targetX = 80;
 var groundY = -115;
 
-var bestScore = []
-var averageScore = []
-var medianScore = []
-var worstScore = []
+var bestScore = [];
+var averageScore = [];
+var medianScore = [];
+var worstScore = [];
+var eliteScore = [];
 
 
     //SIMULATION VARIABLES

@@ -528,6 +528,7 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
             agents[i].alive = false;
             agents[i].timeOfDeath = time;
         }else{
+            networks[i].lastScore = scores[i];
             scores[i] += CalculateRuntimeScore(agent, distance, dt);
         }
 
@@ -645,10 +646,11 @@ function RunStep(agents, networks, targetX, groundY, targetRadius, dt, time,
     }
 }
 
-function CalculateScore(agent, targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed)
+function CalculateScore(agent, targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed, fieldDist)
 {
 
     let score = 0;
+    let landed = true;
     const targetY = GetGroundHeight(targetX, groundY, generationSeed, targetX, targetRadius, curriculumStage);
 
     // LANDING VELOCITY - most important
@@ -657,40 +659,48 @@ function CalculateScore(agent, targetX, groundY, targetRadius, generationLength,
     const horizontalSpeed = Math.abs(agent.xVel);
     const angularSpeed = Math.abs(agent.aVel);
 
-    score += verticalSpeed * 100;   // heavily penalize fast vertical landing
-    score += horizontalSpeed * 50;  // penalize sideways drift
-    score += angularSpeed * 50;     // penalize spinning
+    score += verticalSpeed * CurriculumBlend([100, 75, 75, 100, 200], curriculumStage);   // heavily penalize fast vertical landing
+    score += horizontalSpeed * CurriculumBlend([0, 5, 10, 20, 50, 100], curriculumStage);  // penalize sideways drift
+    score += angularSpeed * CurriculumBlend([5, 10, 15, 25, 50, 100], curriculumStage);     // penalize spinning
 
     // big reward for soft landing (under crashVelocity)
     if(verticalSpeed < crashVelocity)
     {
         score -= 1000; // clear separation between soft and hard landings
-        score -= (crashVelocity - verticalSpeed) / crashVelocity * 4000; // extra bonus for landing softly and slowly
+        score -= (crashVelocity - verticalSpeed) / crashVelocity * CurriculumBlend([4000, 4000, 3000, 2000, 3000, 5000], curriculumStage); // extra bonus for landing softly and slowly
+    }else{
+        score += CurriculumBlend([0, 50, 200, 500, 1000], curriculumStage); // gets worse to crash as curriculum goes on, decentivising safe failure strategies
+        landed = false;
     }
 
     // ORIENTATION - should be upright (angle = PI/2)
     const angleError = Math.abs(
         ((agent.angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI / 2
     );
-    score += angleError * 200; // penalize being tilted
+    score += angleError * CurriculumBlend([1,10,50,100,250,400,500], curriculumStage); // penalize being tilted
 
     // LANDING POSITION - how close to target
     const horizontalError = Math.abs(agent.xPos - targetX);
     score += horizontalError * 20;
 
-    const distance = Math.sqrt(horizontalError*horizontalError+(agent.yPos - targetY)*(agent.yPos - targetY));
+    const distance = Math.sqrt(horizontalError*horizontalError+(agent.yPos - targetY)*(agent.yPos - targetY)); // euclidean distance btw
 
     // big reward for landing in target zone, else punishment for distance (when obstacles become a bigger issue, there needs to be at least some guidance towards target)
     if(horizontalError <= targetRadius && agent.yPos < targetY + 1)
     {
         score -= 2000;
-        score -= (targetRadius - horizontalError) / targetRadius * 2000; // extra bonus for landing in the center of the target zone
+        score -= (targetRadius - horizontalError) / targetRadius * CurriculumBlend([1000, 2000, 3000, 2000], curriculumStage); // extra bonus for landing in the center of the target zone
     }else{
-        score += distance / targetRadius * 500;
+        score += distance / targetRadius * CurriculumBlend([100, 200, 300, 150], curriculumStage); // punishes euclidean distance
+        score += fieldDist * CurriculumBlend([0, 50, 150, 500, 1000], curriculumStage); // punishes field distance
+
+        // these are like a REALLY bad punishment btw
+
+        landed = false;
     }
 
     // agent never landed - big punishment
-    if(agent.alive)
+    if(agent.alive || ! landed)
     {
         score += verticalSpeed;
         score += horizontalSpeed;
@@ -699,20 +709,100 @@ function CalculateScore(agent, targetX, groundY, targetRadius, generationLength,
         score += distance * distance * 2;
         score += 100;
         return score;
+    }else{
+        score -= CurriculumBlend([0, 50, 250, 500, 1000], curriculumStage);
     }
 
     // these only matter for agents that have landed
 
     // FUEL CONSERVATION - bonus for not wasting fuel
-    score -= (agent.fuel / 500) * 500;
+    // only matters in later curriculums
+    score -= (agent.fuel / 500) * CurriculumBlend([0, 0, 50, 250, 500, 1000], curriculumStage);
 
     // TIME TAKEN TO LAND
+    // only matters in later curriculums
     if(isFinite(agent.timeOfDeath))
     {
-        score -= (agent.timeOfDeath / generationLength) * 150;
+        score -= (agent.timeOfDeath / generationLength) * CurriculumBlend([0, 0, 20, 50, 100, 150, 250], curriculumStage);
     }else{
         console.error(agent.timeOfDeath);
     }
+
+    return score;
+}
+
+function CalculateTerminalScore(agent, targetX, groundY, targetRadius, generationLength, curriculumStage, crashVelocity, generationSeed, fieldDist)
+{
+    // variables
+
+    const verticalSpeed = Math.abs(agent.yVel);
+    const horizontalSpeed = Math.abs(agent.xVel);
+    const speed = Math.hypot(verticalSpeed, horizontalSpeed);
+    const angularSpeed = Math.abs(agent.aVel);
+
+    const angleError = Math.abs(
+        ((agent.angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI / 2
+    );
+    const horizontalError = Math.abs(agent.xPos - targetX);
+    const distance = Math.sqrt(horizontalError*horizontalError+(agent.yPos - targetY)*(agent.yPos - targetY)); // euclidean distance
+
+    const landed = !agent.alive;
+    const crash = verticalSpeed > crashVelocity;
+    const onTarget = distance <= targetRadius;
+    let penalty = 0;
+    let landingQuality = 0;
+    let landingEfficiency = 0;
+
+    // penalty
+    penalty += fieldDist * 50;
+    penalty += speed * 100;
+    penalty += angularSpeed * 50;
+    penalty += angleError * 200;
+
+    // landing quality
+    if (landed) {
+
+        // reward precision landing - up to 4000
+        if (onTarget)
+        {
+            landingQuality -= 2000;
+            landingQuality -= (1 - distance / targetRadius) * 2000;
+        }
+
+        // reward not crashing - up to 4000
+        if (!crash)
+        {
+            landingQuality -= 2000;
+            landingQuality -= (1 - speed / crashVelocity) * 2000;
+        }
+
+        // give an extra reward for landing on the target without crashing
+        if (onTarget && !crash)
+        {
+            landingQuality -= 1000; // flat 1000
+        }
+
+        // perfect landing quality is -9,000
+    }else{
+        penalty *= 2; // doubles penalty if agent didn't land
+    }
+
+    landingEfficiency -= (1 - agent.fuel / 500) * 500;
+    landingEfficiency -= (1 - agent.timeOfDeath / generationLength) * 500;
+
+    // perfect landing efficiency is -1,000
+
+    
+    // score
+    // balance for a perfect landing being -10,000
+    
+    if (crash || !landed) // crashing or not landing is worse than landing in the wrong spot
+    {
+        score += 2000; // flat penalty for failure
+    }
+    score += penalty * CurriculumBlend([1, 0.9, 0.75, 0.5, 0.25], curriculumStage);
+    score += landingQuality;
+    score += landingEfficiency * CurriculumBlend([0, 0.1, 0.25, 0.5, 1], curriculumStage);
 
     return score;
 }
@@ -803,13 +893,13 @@ function CalculateRuntimeScore(agent, distance, dt)
 
     let distancePunishment = distance * distance * dt;
     distancePunishment /= 100;
-    distancePunishment *= 0.25;
+    distancePunishment *= 0.15;
     score += distancePunishment;
 
     // for ever second, the agent gets punished by the square of distance.
     // 10 seconds 100 meters away the amount is 100,000
     // divide by 100 to normalize a distance of 100 meters
-    // still 1000, so further reduce that to 250
+    // still 1000, so further reduce that to 150
     // still a decent chunk, but it definitely incentivises getting closer to the target
     // the reason why it's squared is because moving a little bit away isn't that bad, but getting wildly far away is
 
@@ -819,6 +909,8 @@ function CalculateRuntimeScore(agent, distance, dt)
 
         return 0;
     }
+
+    score *= 0.75; // slightly lowers the weight of all runtime score because terminal score is more important
 
     return score;
 }
